@@ -1,0 +1,14 @@
+{
+  "name": "dropshipping-api-docs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dokumentační web Dropshipping API",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "fetch-spec": "node scripts/fetch-spec.mjs",
+    "test": "node --test"
+  }
+}

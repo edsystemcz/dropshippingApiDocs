@@ -1,0 +1,22 @@
+[
+  {
+    "slug": "prod",
+    "title": "Dropshipping API - PROD",
+    "default": true,
+    "baseUrl": "https://dropshippingapi.edsystem.cz",
+    "specUrl": "https://dropshippingapi.edsystem.cz/swagger/v1/swagger.json",
+    "tokenUrl": "https://authsvcext.edsystem.cz/oauth/token"
+  },
+  {
+    "slug": "test",
+    "title": "Dropshipping API - TEST",
+    "default": false,
+    "baseUrl": "https://dropshippingapi-test.edsystem.cz",
+    "specUrl": "https://dropshippingapi-test.edsystem.cz/swagger/v1/swagger.json",
+    "tokenUrl": "https://authsvcext-test.edsystem.cz/oauth/token",
+    "notice": {
+      "cs": "Toto je dokumentace testovacího prostředí.",
+      "en": "This is the documentation of the test environment."
+    }
+  }
+]

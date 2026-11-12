@@ -1,0 +1,6088 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Dropshipping API Gateway service, build: 1.1.122",
+    "version": "v1"
+  },
+  "paths": {
+    "/codelists/countries": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Číselník zemí.",
+        "operationId": "GetCountriesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CountryModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CountryModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CountryModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/currencies": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Číselník měn.",
+        "operationId": "GetCurrenciesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CurrencyModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CurrencyModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CurrencyModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/paymentTypes": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Číselník typů plateb.",
+        "operationId": "GetPaymentTypesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.PaymentTypeModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.PaymentTypeModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.PaymentTypeModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/productUnits": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Číselník jednotek produktu.",
+        "operationId": "GetProductUnitsAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductUnitModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductUnitModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductUnitModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/productSubtypes": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Číselník subtypů produktu.",
+        "operationId": "GetProductSubtypesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSubtypeModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSubtypeModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSubtypeModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/transports": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Číselník doprav.",
+        "operationId": "GetTransportsAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.TransportModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.TransportModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.TransportModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/ProductCategory": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Číselník kategorií.",
+        "operationId": "GetProductCategoriesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductCategoryModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductCategoryModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductCategoryModel"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/productSuperCategories": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Superkategorie.",
+        "operationId": "GetProductSuperCategoriesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/productSuperCategoryCategories": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Kategorie superkategorií produktů.",
+        "operationId": "GetProductSuperCategoryCategoriesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryCategoryModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryCategoryModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryCategoryModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/ProductIndex": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Vraci indexy produktu.",
+        "operationId": "GetProductListIndexAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductListIndexModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductListIndexModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductListIndexModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/ProductBindingsType": {
+      "get": {
+        "tags": [
+          "Codelist"
+        ],
+        "summary": "Vraci ciselnik typu prislusenstvi/nahrad.",
+        "operationId": "GetProductBindingTypesAsync",
+        "parameters": [
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductBindingsTypeModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductBindingsTypeModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ProductBindingsTypeModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Info": {
+      "get": {
+        "tags": [
+          "Info"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Esyco.Services.RestServiceBase.Models.InfoModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Esyco.Services.RestServiceBase.Models.InfoModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Esyco.Services.RestServiceBase.Models.InfoModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/b2b/orders/{orderId}": {
+      "get": {
+        "tags": [
+          "OrdersB2B"
+        ],
+        "summary": "Vrátí detail prodejní objednávky B2B.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "GetOrderDetailB2BAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "ID objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PredefinedFilter",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Business.Dto.Filters.PredefinedCustomerOrderFilters"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2BModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2BModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2BModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2b/orders/{orderId}/cancel": {
+      "put": {
+        "tags": [
+          "OrdersB2B"
+        ],
+        "summary": "Stornuje položky objednávky.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "CancelOrderItemsAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "ID objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PredefinedFilter",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Business.Dto.Filters.PredefinedCustomerOrderFilters"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CancelOrderItemResultModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CancelOrderItemResultModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CancelOrderItemResultModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2b/orders": {
+      "post": {
+        "tags": [
+          "OrdersB2B"
+        ],
+        "summary": "Import prodejních objednávek B2B.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "requestBody": {
+          "description": "Model s novou objednávkou.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BModel"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BModel"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BModel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "OrdersB2B"
+        ],
+        "summary": "Načtení objednávek dle podmínek filtru.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "GetB2BOrdersAsync",
+        "parameters": [
+          {
+            "name": "OrderId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "OrderSymbol",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "OrderOriginalSymbol",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Completed",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "CreatedFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "CreatedTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.GetOrderB2BModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.GetOrderB2BModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.GetOrderB2BModel"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2b/orders/{orderId}/confirm": {
+      "post": {
+        "tags": [
+          "OrdersB2B"
+        ],
+        "summary": "Povolení expedice dle zadaného orderId.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "ConfirmOrderAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "ID objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Model pro povolení expedice.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderB2BModel"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderB2BModel"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderB2BModel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2b/orders/licenceKeys/{orderId}": {
+      "get": {
+        "tags": [
+          "OrdersB2B"
+        ],
+        "summary": "Vrátí licenční klíče pro danou objednávku.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "GetLicenceKeysAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "Id objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.LicenceKeyModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.LicenceKeyModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.LicenceKeyModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2c/orders/{orderId}": {
+      "get": {
+        "tags": [
+          "OrdersB2C"
+        ],
+        "summary": "Vrátí detail prodejní objednávky B2C.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "GetOrderDetailB2CAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "ID objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PredefinedFilter",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Business.Dto.Filters.PredefinedCustomerOrderFilters"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2CModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2CModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2CModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2c/orders": {
+      "post": {
+        "tags": [
+          "OrdersB2C"
+        ],
+        "summary": "Online import prodejních objednávek B2C.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "requestBody": {
+          "description": "Model s novou objednávkou.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2CModel"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2CModel"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2CModel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2c/orders/{orderId}/packages": {
+      "get": {
+        "tags": [
+          "OrdersB2C"
+        ],
+        "summary": "Vrátí seznam balíků.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "GetB2COrderPackagesAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "Id objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Packages.PackageModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Packages.PackageModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Packages.PackageModel"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2c/orders/{orderId}/rules": {
+      "put": {
+        "tags": [
+          "OrdersB2C"
+        ],
+        "summary": "Update pravidel na objednávce.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "UpdateOrderRulesAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "Číslo objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Pravidla objednávky.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.UpdateOrderRuleModel"
+                }
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.UpdateOrderRuleModel"
+                }
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.UpdateOrderRuleModel"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2c/orders/{orderId}/invoice": {
+      "post": {
+        "tags": [
+          "OrdersB2C"
+        ],
+        "summary": "Fakturace objednávky.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "CreateInvoiceFromOrder",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "Číslo objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Faktura objednávky.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateInvoiceFromOrderModel"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateInvoiceFromOrderModel"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateInvoiceFromOrderModel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/b2c/orders/{orderId}/delivery": {
+      "get": {
+        "tags": [
+          "OrdersB2C"
+        ],
+        "summary": "Vrátí seznam dodacích listů pro objednávku.",
+        "description": "\r\n* Permission Id(s) neccessary to run method: **1 (None)**",
+        "operationId": "GetB2COrderDeliveryNotesAsync",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "Id objednávky.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Take",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Skip",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Contains reason of 401 result - https://tools.ietf.org/html/rfc6750#section-3"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Delivery.DeliveryNoteModel"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Delivery.DeliveryNoteModel"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Delivery.DeliveryNoteModel"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403"
+          }
+        }
+      }
+    },
+    "/products/{productId}": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Vrátí detail produktu.",
+        "operationId": "GetProductAsync",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "description": "ID produktu",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/catalog": {
+      "post": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Generování dropship katalogu produktů asychronně.",
+        "requestBody": {
+          "description": "Model s požadavkem na generovaný katalog.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.CreateProductCatalogModel"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.CreateProductCatalogModel"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.CreateProductCatalogModel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductGenerateCatalogResultModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductGenerateCatalogResultModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductGenerateCatalogResultModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Vrátí výsledek generování katalogu produktů asynchronně.",
+        "operationId": "GetProductCatalogResultAsync",
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "query",
+            "description": "ID transakce.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "503": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductCatalogModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductCatalogModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductCatalogModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Elinkx.Dropship.Api.Business.Dto.Filters.PredefinedCustomerOrderFilters": {
+        "enum": [
+          "Default",
+          "NoSubjectRestriction"
+        ],
+        "type": "string"
+      },
+      "Elinkx.Dropship.Api.Business.Products.CatalogType": {
+        "enum": [
+          "Full",
+          "Update"
+        ],
+        "type": "string"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.AddressExternalModel": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Název adresy.",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "description": "Mìsto.",
+            "nullable": true
+          },
+          "street": {
+            "type": "string",
+            "description": "Ulice.",
+            "nullable": true
+          },
+          "zipCode": {
+            "type": "string",
+            "description": "PSÈ.",
+            "nullable": true
+          },
+          "country": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CountryModel"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro externí adresy."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.AddressModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id adresy.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název adresy.",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "description": "Město.",
+            "nullable": true
+          },
+          "street": {
+            "type": "string",
+            "description": "Ulice.",
+            "nullable": true
+          },
+          "zipCode": {
+            "type": "string",
+            "description": "PSČ.",
+            "nullable": true
+          },
+          "country": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CountryModel"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro adresy."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.CountryModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID  země",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód země.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název země",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník zemí"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.CurrencyModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID měny.",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód měny.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název měny.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník měn."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.EndUserInfoModel": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Jméno příjmení koncového zákazníka.",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "description": "Email koncového zákazníka.",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "description": "Telefon koncového zákazníka.",
+            "nullable": true
+          },
+          "registrationNumber": {
+            "type": "string",
+            "description": "IČ koncového zákazníka - nepovinný údaj.",
+            "nullable": true
+          },
+          "vatNumber": {
+            "type": "string",
+            "description": "DIČ koncového zákazníka - nepovinný údaj.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model informace o koncovém zákazníkovi."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ExtendedStatusesModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID stavu produktu.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód stavu produktu.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název stavu produktu.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Stav produktu."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ItemModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id položky objednávky.",
+            "format": "int32"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Shared.ProductLinkModel"
+          },
+          "itemText": {
+            "type": "string",
+            "description": "Ručně zadaný název produktu-Položka z externího infa.",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Množství.",
+            "format": "double"
+          },
+          "unitPrice": {
+            "type": "number",
+            "description": "Cena za ks položky s poplatky bez DPH.",
+            "format": "double"
+          },
+          "unitPriceWithVat": {
+            "type": "number",
+            "description": "Cena za ks s poplatky a DPH.",
+            "format": "double"
+          },
+          "rateVat": {
+            "type": "number",
+            "description": "Sazba DPH položky objednávky",
+            "format": "double"
+          },
+          "price": {
+            "type": "number",
+            "description": "Celkem za ks bez DPH",
+            "format": "double"
+          },
+          "priceWithVat": {
+            "type": "number",
+            "description": "Celkem za ks s DPH.",
+            "format": "double"
+          },
+          "allocated": {
+            "type": "number",
+            "description": "Blokováno.",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Položka objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.OrderRuleModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID pravidla objednávky.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód pravidla objednávky.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název pravidla objednávky.",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "description": "Hodnota pravidla objednávky.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro položky objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.PaymentTypeModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID typu platby.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník typů plateb"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ProductBindingsTypeModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID typu příslušenství",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název",
+            "nullable": true
+          },
+          "nameEN": {
+            "type": "string",
+            "description": "Název EN",
+            "nullable": true
+          },
+          "created": {
+            "type": "string",
+            "description": "Vytvořeno",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Vytvořil",
+            "nullable": true
+          },
+          "changed": {
+            "type": "string",
+            "description": "Změněno",
+            "format": "date-time",
+            "nullable": true
+          },
+          "changedBy": {
+            "type": "string",
+            "description": "Změnil",
+            "nullable": true
+          },
+          "rejected": {
+            "type": "boolean",
+            "description": "Vyřazen"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník typů příslušenství/náhrady"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ProductCategoryModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název kategorie",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "description": "Pořadí.",
+            "format": "int32",
+            "nullable": true
+          },
+          "rejected": {
+            "type": "boolean",
+            "description": "Vyřazen"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník kategorie produktu"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ProductListIndexModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID produktového indexu",
+            "format": "int32"
+          },
+          "setTextId": {
+            "type": "integer",
+            "description": "ID popisku",
+            "format": "int32",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód indexu",
+            "nullable": true
+          },
+          "parentId": {
+            "type": "integer",
+            "description": "ID rodiče indexu (nadřazený index)",
+            "format": "int32",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název",
+            "nullable": true
+          },
+          "nameEN": {
+            "type": "string",
+            "description": "Název EN",
+            "nullable": true
+          },
+          "nameDE": {
+            "type": "string",
+            "description": "Název DE",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "description": "Řazení",
+            "format": "int32",
+            "nullable": true
+          },
+          "sort": {
+            "type": "string",
+            "description": "Číselný řetězec",
+            "nullable": true
+          },
+          "visible": {
+            "type": "boolean",
+            "description": "Viditelnost indexu",
+            "nullable": true
+          },
+          "rejected": {
+            "type": "boolean",
+            "description": "Vyřazen"
+          },
+          "created": {
+            "type": "string",
+            "description": "Vytvořeno",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Vytvořil",
+            "nullable": true
+          },
+          "changed": {
+            "type": "string",
+            "description": "Změněno",
+            "format": "date-time"
+          },
+          "changedBy": {
+            "type": "string",
+            "description": "Změnil",
+            "nullable": true
+          },
+          "codeOld": {
+            "type": "string",
+            "description": "Starý kód indexu",
+            "nullable": true
+          },
+          "oldParentCode": {
+            "type": "string",
+            "description": "Kód rodice indexu (nadřazený index definovaný kódem)",
+            "nullable": true
+          },
+          "oldProductListHeaderId": {
+            "type": "integer",
+            "description": "ID poznámky v hlavičce 1. úrovně ve stromu",
+            "format": "int32",
+            "nullable": true
+          },
+          "oldLevel": {
+            "type": "integer",
+            "description": "Úroveň zařazení v indexovém stromě",
+            "format": "int32",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "description": "Poznámka",
+            "nullable": true
+          },
+          "codeSort": {
+            "type": "string",
+            "description": "Kód zkratky",
+            "nullable": true
+          },
+          "productSubtypeId": {
+            "type": "integer",
+            "description": "ID subtypu produktu",
+            "format": "int32",
+            "nullable": true
+          },
+          "tmp": {
+            "type": "integer",
+            "description": "?",
+            "format": "int32",
+            "nullable": true
+          },
+          "indexTypeId": {
+            "type": "integer",
+            "description": "ID typu indexu",
+            "format": "int32"
+          },
+          "localizedRegion": {
+            "type": "integer",
+            "description": "Lokalizováno pro region",
+            "format": "int32"
+          },
+          "generatedId": {
+            "type": "integer",
+            "description": "ID zdroje vytvoření",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník produktových indexů"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ProductSubtypeModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID subtypu",
+            "format": "int32"
+          },
+          "parentId": {
+            "type": "integer",
+            "description": "ID nadřazeného subtypu",
+            "format": "int32",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód subtypu",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název",
+            "nullable": true
+          },
+          "rejected": {
+            "type": "boolean",
+            "description": "Vyřazen",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník subtypu produktu"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryCategoryModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID kategorie v Superkategorii.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název.",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "description": "Pořadí.",
+            "format": "int32",
+            "nullable": true
+          },
+          "rejected": {
+            "type": "boolean",
+            "description": "Vyřazen."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník kategorie v superkategorií produktového navigátoru."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ProductSuperCategoryModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID superkategorie",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "description": "Pořadí.",
+            "format": "int32",
+            "nullable": true
+          },
+          "rejected": {
+            "type": "boolean",
+            "description": "Vyřazen"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Superkategorie"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.ProductUnitModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID měrné jednotky",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód",
+            "nullable": true
+          },
+          "rejected": {
+            "type": "boolean",
+            "description": "Vyřazen",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Měrná jednotka produktu"
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.RuleModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id pravidla.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód pravidla.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "/Název pravidla.",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "description": "Hodnota pravidla.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro pravidla."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Codelist.TransportModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id dopravy.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód dopravy.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název dopravy.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Číselník doprav."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Delivery.DeliveryNoteItemModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id položky dodáku.",
+            "format": "int32"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Množství.",
+            "format": "double"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Shared.ProductLinkModel"
+          },
+          "productSerialNumber": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Delivery.ProductSerialNumberModel"
+            },
+            "description": "Produkt.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Dto objekt položky dodáku."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Delivery.DeliveryNoteModel": {
+        "type": "object",
+        "properties": {
+          "deliveryId": {
+            "type": "integer",
+            "description": "ID.",
+            "format": "int32"
+          },
+          "transportId": {
+            "type": "integer",
+            "description": "Id dopravy.",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Delivery.DeliveryNoteItemModel"
+            },
+            "description": "Položky dodáku.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Dodací list."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Delivery.ProductSerialNumberModel": {
+        "type": "object",
+        "properties": {
+          "serialNumber": {
+            "type": "string",
+            "description": "Sériové číslo.",
+            "nullable": true
+          },
+          "created": {
+            "type": "string",
+            "description": "Datum vytvoření záruky.",
+            "format": "date-time"
+          },
+          "term": {
+            "type": "integer",
+            "description": "Doba trvání záruky.",
+            "format": "int32"
+          },
+          "termUnitId": {
+            "type": "integer",
+            "description": "ID typu záruky (jednotka).",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Sériové číslo produktu."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.BankModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID banky.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód banky.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název banky.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro banky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CancelOrderItemResultModel": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "description": "Status stornování objednávky.",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "description": "Textová zpráva.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Dto objekt pro výsledek stornování objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderB2BModel": {
+        "required": [
+          "endUserInfo",
+          "invoiceEndUserAddress"
+        ],
+        "type": "object",
+        "properties": {
+          "invoiceSymbolCustomer": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Identifikátor objednávky dealera (externí číslo objednávky).",
+            "nullable": true
+          },
+          "deliveryPointCode": {
+            "maxLength": 256,
+            "type": "string",
+            "description": "Kód výdejního místa.",
+            "nullable": true
+          },
+          "transportId": {
+            "type": "integer",
+            "description": "ID dopravy.",
+            "format": "int32",
+            "nullable": true
+          },
+          "paymentTypeId": {
+            "type": "integer",
+            "description": "Způsob úhrady.",
+            "format": "int32",
+            "nullable": true
+          },
+          "noteExternal": {
+            "maxLength": 2048,
+            "type": "string",
+            "description": "Externí poznámka.",
+            "nullable": true
+          },
+          "currencyId": {
+            "type": "integer",
+            "description": "Měna dokladu.",
+            "format": "int32",
+            "nullable": true
+          },
+          "priceVat": {
+            "type": "number",
+            "description": "Cena s DPH.",
+            "format": "double",
+            "nullable": true,
+            "deprecated": true
+          },
+          "codValue": {
+            "minimum": 0.001,
+            "type": "number",
+            "description": "Cena dobírky.",
+            "format": "double",
+            "nullable": true
+          },
+          "codCurrencyId": {
+            "type": "integer",
+            "description": "Měna dobírky.",
+            "format": "int32",
+            "nullable": true
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderRuleModel"
+            },
+            "description": "Kolekce obchodních pravidel objednávky.",
+            "nullable": true
+          },
+          "endUserInfo": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderEndUserInfoModel"
+          },
+          "deliveryEndUserAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderDeliveryAddressModel"
+          },
+          "invoiceEndUserAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderInvoiceAddressModel"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro potvrzení B2B objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderDeliveryAddressModel": {
+        "required": [
+          "city",
+          "name",
+          "street",
+          "zipCode"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 256,
+            "type": "string",
+            "description": "Název adresy (Jméno a příjmení klienta)."
+          },
+          "postscript": {
+            "type": "string",
+            "description": "Dovětek adresy.",
+            "nullable": true
+          },
+          "street": {
+            "maxLength": 256,
+            "type": "string",
+            "description": "Ulice a číslo popisné."
+          },
+          "city": {
+            "maxLength": 256,
+            "type": "string",
+            "description": "Město."
+          },
+          "zipCode": {
+            "maxLength": 10,
+            "type": "string",
+            "description": "Psč."
+          },
+          "countryId": {
+            "type": "integer",
+            "description": "ID země adresy.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Adresa pro potvrzení objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderEndUserInfoModel": {
+        "required": [
+          "email",
+          "name",
+          "phone"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Jméno."
+          },
+          "email": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Email."
+          },
+          "phone": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Telefon."
+          },
+          "registrationNumber": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "IČ subjektu.",
+            "nullable": true
+          },
+          "vatNumber": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "DIČ subjektu",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Informace o koncovém uživateli."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.ConfirmOrderInvoiceAddressModel": {
+        "required": [
+          "city",
+          "name",
+          "street",
+          "zipCode"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Název adresy (Jméno a příjmení klienta)."
+          },
+          "postscript": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Dovětek adresy.",
+            "nullable": true
+          },
+          "street": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Ulice a číslo popisné."
+          },
+          "city": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Město."
+          },
+          "zipCode": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Psč."
+          },
+          "countryId": {
+            "type": "integer",
+            "description": "ID země adresy.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Adresa pro potvrzení objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateAddressModel": {
+        "required": [
+          "addressName",
+          "city",
+          "street",
+          "zipCode"
+        ],
+        "type": "object",
+        "properties": {
+          "pairingCode": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "description": "Libovolný externí párovací kód klienta. Identifikátor pro klienta, tak aby si mohl výsledek spárovat se svým příslušným záznamem.",
+            "nullable": true
+          },
+          "postscript": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Dovětek adresy.",
+            "nullable": true
+          },
+          "street": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Ulice a číslo popisné."
+          },
+          "city": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Město."
+          },
+          "zipCode": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Psč."
+          },
+          "countryId": {
+            "type": "integer",
+            "description": "ID země adresy.",
+            "format": "int32"
+          },
+          "addressName": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Název adresy (Jméno a příjmení klienta)."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro zadání adresy."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateEndUserInfoModel": {
+        "required": [
+          "email",
+          "name",
+          "phone"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Jméno příjmení (koncového zákazníka)."
+          },
+          "email": {
+            "type": "string",
+            "description": "Email klienta (koncový)."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Telefon klienta (koncový)."
+          },
+          "registrationNumber": {
+            "maxLength": 20,
+            "minLength": 0,
+            "type": "string",
+            "description": "IČ zákazníka.",
+            "nullable": true
+          },
+          "vatNumber": {
+            "maxLength": 20,
+            "minLength": 0,
+            "type": "string",
+            "description": "DIČ zákazníka.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro info o koncovém zákazníkovi."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateInvoiceFromOrderModel": {
+        "type": "object",
+        "properties": {
+          "pairingCode": {
+            "type": "string",
+            "description": "Párovací kód.",
+            "nullable": true
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateInvoiceRuleModel"
+            },
+            "description": "Pravidla.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Fakturace objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateInvoiceRuleModel": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Kód.",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "description": "Hodnota.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Pravidla objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BAddressModel": {
+        "type": "object",
+        "properties": {
+          "deliveryAddressId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "description": "Id dodací adresy.",
+            "format": "int32",
+            "nullable": true
+          },
+          "addressName": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Název adresy (Jméno a příjmení klienta).",
+            "nullable": true
+          },
+          "postscript": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Dovětek adresy.",
+            "nullable": true
+          },
+          "street": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Ulice a číslo popisné.",
+            "nullable": true
+          },
+          "city": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Město.",
+            "nullable": true
+          },
+          "zipCode": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Psč.",
+            "nullable": true
+          },
+          "countryId": {
+            "type": "integer",
+            "description": "ID země adresy.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model adres pro vytváření B2B objednávek."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BItemModel": {
+        "required": [
+          "productCode",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "maxLength": 256,
+            "type": "string",
+            "description": "Kód produktu."
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Množství.",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model produktů pro vytvářené B2B objednávek."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BModel": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "symbolCustomer": {
+            "maxLength": 1000,
+            "type": "string",
+            "description": "Identifikátor objednávky dealera (externí číslo objednávky).",
+            "nullable": true
+          },
+          "subjectId": {
+            "type": "integer",
+            "description": "ID subjektu odběratele.",
+            "format": "int32",
+            "nullable": true
+          },
+          "invoiceAddressId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "description": "ID fakturační adresy.",
+            "format": "int32",
+            "nullable": true
+          },
+          "deliveryPointCode": {
+            "maxLength": 256,
+            "type": "string",
+            "description": "Kód výdejního místa.",
+            "nullable": true
+          },
+          "transportId": {
+            "type": "integer",
+            "description": "ID dopravy.",
+            "format": "int32",
+            "nullable": true
+          },
+          "paymentTypeId": {
+            "type": "integer",
+            "description": "Způsob úhrady.",
+            "format": "int32",
+            "nullable": true
+          },
+          "noteExternal": {
+            "maxLength": 2048,
+            "type": "string",
+            "description": "Externí poznámka.",
+            "nullable": true
+          },
+          "currencyId": {
+            "type": "integer",
+            "description": "Měna dokladu.",
+            "format": "int32",
+            "nullable": true
+          },
+          "dateCreated": {
+            "type": "string",
+            "description": "Datum vytvoření objednávky.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BItemModel"
+            },
+            "description": "Položky objednávky."
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderRuleModel"
+            },
+            "description": "Kolekce obchodních pravidel objednávky.",
+            "nullable": true
+          },
+          "deliveryAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2BAddressModel"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro vytvoření B2B objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderB2CModel": {
+        "required": [
+          "currencyId",
+          "dateCreated",
+          "endUserInfo",
+          "invoiceAddressId",
+          "invoiceEndUserAddress",
+          "items",
+          "price",
+          "priceVat",
+          "transportId"
+        ],
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "number",
+            "description": "Cena celkem bez DPH.",
+            "format": "double"
+          },
+          "priceVat": {
+            "type": "number",
+            "description": "Cena celkem s DPH.",
+            "format": "double"
+          },
+          "endUserInfo": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateEndUserInfoModel"
+          },
+          "invoiceSymbolCustomer": {
+            "type": "string",
+            "description": "Číslo faktury pro zákazníka.",
+            "nullable": true
+          },
+          "dateCreated": {
+            "type": "string",
+            "description": "Datum vytvoření objednávky.",
+            "format": "date-time"
+          },
+          "symbolCustomer": {
+            "type": "string",
+            "description": "Zákaznické číslo objednávky.",
+            "nullable": true
+          },
+          "subjectId": {
+            "type": "integer",
+            "description": "ID subjektu odběratele. Bude se aplikovat pouze pokud bude mít speciální právo.",
+            "format": "int32",
+            "nullable": true
+          },
+          "invoiceAddressId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "description": "ID fakturační adresy dodavatele.",
+            "format": "int32"
+          },
+          "deliveryPointCode": {
+            "type": "string",
+            "description": "Kód výdejního místa.",
+            "nullable": true
+          },
+          "noteExternal": {
+            "type": "string",
+            "description": "Externí poznámka.",
+            "nullable": true
+          },
+          "currencyId": {
+            "type": "integer",
+            "description": "Měna dokladu.",
+            "format": "int32"
+          },
+          "transportId": {
+            "type": "integer",
+            "description": "Doprava.",
+            "format": "int32"
+          },
+          "paymentTypeId": {
+            "type": "integer",
+            "description": "Způsob úhrady.",
+            "format": "int32"
+          },
+          "divisionId": {
+            "type": "integer",
+            "description": "ID střediska.",
+            "format": "int32"
+          },
+          "pairingCode": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "description": "Libovolný externí párovací kód klienta. Identifikátor pro klienta, tak aby si mohl výsledek spárovat se svým příslušným záznamem.",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderItemB2CModel"
+            },
+            "description": "Položky objednávky."
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderRuleModelB2C"
+            },
+            "description": "Kolekce obchodních pravidel objednávky.",
+            "nullable": true
+          },
+          "deliveryEndUserAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateAddressModel"
+          },
+          "invoiceEndUserAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.CreateAddressModel"
+          }
+        },
+        "additionalProperties": false,
+        "description": "API model pro import prodejních dokumentů."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderItemB2CModel": {
+        "required": [
+          "quantity",
+          "rateVat",
+          "unitPrice",
+          "unitPriceWithVat"
+        ],
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "description": "Kód produktu.",
+            "nullable": true
+          },
+          "itemText": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string",
+            "description": "Ručně zadaný název produktu.",
+            "nullable": true
+          },
+          "unitPriceBase": {
+            "type": "number",
+            "description": "Cena 1ks položky bez DPH.",
+            "format": "double",
+            "nullable": true
+          },
+          "unitPriceBaseCurrency": {
+            "type": "number",
+            "description": "Cena devizová bez DPH.",
+            "format": "double",
+            "nullable": true
+          },
+          "unitPriceWithGarb": {
+            "type": "boolean",
+            "description": "Ručně vložená cena je/není s poplatkem.",
+            "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "description": "Cena za jednotku s poplatky bez DPH.",
+            "format": "double"
+          },
+          "unitPriceWithVat": {
+            "type": "number",
+            "description": "Cena za jednotku s poplatky s DPH.",
+            "format": "double"
+          },
+          "rateVat": {
+            "type": "number",
+            "description": "Koeficient DPH (v hodnotách 1.19, 1.21 apod. ).",
+            "format": "double"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Množství.",
+            "format": "double"
+          },
+          "pairingCode": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "description": "Libovolný externí párovací kód klienta. Identifikátor pro klienta, tak aby si mohl výsledek spárovat se svým příslušným záznamem.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro položky B2C prodejní objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderRuleModel": {
+        "required": [
+          "ruleCode",
+          "ruleValue"
+        ],
+        "type": "object",
+        "properties": {
+          "ruleCode": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Kód pravidla."
+          },
+          "ruleValue": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Hodnota pravidla."
+          }
+        },
+        "additionalProperties": false,
+        "description": "API model pro import obchodních pravidel objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.CreateOrderRuleModelB2C": {
+        "required": [
+          "ruleCode",
+          "ruleValue"
+        ],
+        "type": "object",
+        "properties": {
+          "ruleCode": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Kód pravidla."
+          },
+          "ruleValue": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string",
+            "description": "Hodnota pravidla."
+          },
+          "pairingCode": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "description": "Libovolný externí párovací kód klienta. Identifikátor pro klienta, tak aby si mohl výsledek spárovat se svým příslušným záznamem.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "API model pro import obchodních pravidel objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.DivisionModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID střediska.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód střediska.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název střediska.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro střediska."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.GetOrderB2BModel": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "integer",
+            "description": "ID objednávky.",
+            "format": "int32"
+          },
+          "orderSymbol": {
+            "type": "string",
+            "description": "Číslo objednávky.",
+            "nullable": true
+          },
+          "orderOriginalSymbol": {
+            "type": "string",
+            "description": "Originální číslo objednávky.",
+            "nullable": true
+          },
+          "dateCreated": {
+            "type": "string",
+            "description": "Vytvořeno.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Vyřízeno."
+          },
+          "priceBrutto": {
+            "type": "number",
+            "description": "Celková cena s daní.",
+            "format": "double",
+            "nullable": true
+          },
+          "priceNetto": {
+            "type": "number",
+            "description": "Celková cena bez daně.",
+            "format": "double",
+            "nullable": true
+          },
+          "priceNettoCurrency": {
+            "type": "number",
+            "description": "Celková cena bez daně v měně dokladu.",
+            "format": "double",
+            "nullable": true
+          },
+          "priceBruttoCurrency": {
+            "type": "number",
+            "description": "Celková cena s daní v měně dokladu.",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.LicenceKeyModel": {
+        "type": "object",
+        "properties": {
+          "licences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.LicenceModel"
+            },
+            "description": "Seznam licencí.",
+            "nullable": true
+          },
+          "infoMessage": {
+            "type": "string",
+            "description": "Informační zpráva.",
+            "nullable": true
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Chybová zpráva.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model objekt pro licenční klíče objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.LicenceModel": {
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "description": "Kód produktu.",
+            "nullable": true
+          },
+          "licenceKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Seznam licenčních klíčů.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Objekt licence."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.OrderAcceptanceTypeModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID akceptace.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název akceptace.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro číselník akceptace."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.OrderB2BItemModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id položky objednávky.",
+            "format": "int32"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Shared.ProductLinkModel"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Množství.",
+            "format": "double"
+          },
+          "unitCode": {
+            "type": "string",
+            "description": "Měrná jednotka položky.",
+            "nullable": true
+          },
+          "unitPriceBase": {
+            "type": "number",
+            "description": "Cena 1 ks položky bez poplatků bez DPH.",
+            "format": "double"
+          },
+          "unitPrice": {
+            "type": "number",
+            "description": "Cena 1 ks položky s poplatky bez DPH.",
+            "format": "double"
+          },
+          "garbageFee": {
+            "type": "number",
+            "description": "Recyklační poplatek.",
+            "format": "double",
+            "nullable": true
+          },
+          "authorFee": {
+            "type": "number",
+            "description": "Autorský poplatek.",
+            "format": "double",
+            "nullable": true
+          },
+          "rateVat": {
+            "type": "number",
+            "description": "Sazba DPH položky objednávky.",
+            "format": "double"
+          },
+          "unitPriceVat": {
+            "type": "number",
+            "description": "Hodnota DPH za 1 ks.",
+            "format": "double"
+          },
+          "unitPriceWithVat": {
+            "type": "number",
+            "description": "Cena jednotky s poplatky a DPH.",
+            "format": "double"
+          },
+          "unitPriceCurrency": {
+            "type": "number",
+            "description": "Devizová cena za 1 ks bez DPH s poplatky.",
+            "format": "double"
+          },
+          "unitPriceWithVatCurrency": {
+            "type": "number",
+            "description": "Devizová cena jednotky s poplatky a DPH.",
+            "format": "double"
+          },
+          "unitPriceBaseCurrency": {
+            "type": "number",
+            "description": "Devizová cena 1 ks položky bez poplatků bez DPH.",
+            "format": "double"
+          },
+          "unitPriceVatCurrency": {
+            "type": "number",
+            "description": "Devizová hodnota DPH za ks.",
+            "format": "double"
+          },
+          "price": {
+            "type": "number",
+            "description": "Celkem za položku bez DPH.",
+            "format": "double"
+          },
+          "priceWithVat": {
+            "type": "number",
+            "description": "Celkem za položku s DPH.",
+            "format": "double"
+          },
+          "priceVat": {
+            "type": "number",
+            "description": "Hodnota celkem DPH.",
+            "format": "double"
+          },
+          "priceCurrency": {
+            "type": "number",
+            "description": "Devizová cena celkem bez DPH.",
+            "format": "double"
+          },
+          "priceWithVatCurrency": {
+            "type": "number",
+            "description": "Devizová cena celkem s DPH.",
+            "format": "double"
+          },
+          "priceVatCurrency": {
+            "type": "number",
+            "description": "Devizová hodnota celkem DPH.",
+            "format": "double"
+          },
+          "priceFeesCurrency": {
+            "type": "number",
+            "description": "Devizová hodnota poplatků celkem.",
+            "format": "double"
+          },
+          "delivered": {
+            "type": "number",
+            "description": "Dodáno.",
+            "format": "double",
+            "nullable": true
+          },
+          "invoiced": {
+            "type": "number",
+            "description": "Fakturováno.",
+            "format": "double",
+            "nullable": true
+          },
+          "putback": {
+            "type": "number",
+            "description": "Vráceno.",
+            "format": "double",
+            "nullable": true
+          },
+          "canceled": {
+            "type": "number",
+            "description": "Stornováno.",
+            "format": "double",
+            "nullable": true
+          },
+          "credited": {
+            "type": "number",
+            "description": "Dobropisováno.",
+            "format": "double",
+            "nullable": true
+          },
+          "allocated": {
+            "type": "number",
+            "description": "Blokováno.",
+            "format": "double",
+            "nullable": true
+          },
+          "notDelivered": {
+            "type": "number",
+            "description": "Nedodáno.",
+            "format": "double",
+            "nullable": true
+          },
+          "advancePayed": {
+            "type": "number",
+            "description": "Záloha zaplacena.",
+            "format": "double"
+          },
+          "advanceNotPayed": {
+            "type": "number",
+            "description": "Záloha nezaplacena.",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro položky B2B objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2BModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID objednávky.",
+            "format": "int32"
+          },
+          "type": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderTypeModel"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Číslo objednávky.",
+            "nullable": true
+          },
+          "originalSymbol": {
+            "type": "string",
+            "description": "Číslo originálu.",
+            "nullable": true
+          },
+          "acceptanceType": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderAcceptanceTypeModel"
+          },
+          "noteExternal": {
+            "type": "string",
+            "description": "Externí poznámka.",
+            "nullable": true
+          },
+          "customerId": {
+            "type": "integer",
+            "description": "ID subjektu.",
+            "format": "int32"
+          },
+          "customerName": {
+            "type": "string",
+            "description": "Název subjektu.",
+            "nullable": true
+          },
+          "paymentType": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.PaymentTypeModel"
+          },
+          "transport": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.TransportModel"
+          },
+          "division": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.DivisionModel"
+          },
+          "bank": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.BankModel"
+          },
+          "dateCreated": {
+            "type": "string",
+            "description": "Datum vytvoření.",
+            "format": "date-time"
+          },
+          "manager": {
+            "type": "string",
+            "description": "Jméno a příjmení manažera.",
+            "nullable": true
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CurrencyModel"
+          },
+          "priceBrutto": {
+            "type": "number",
+            "description": "Cena s DPH.",
+            "format": "double"
+          },
+          "priceNetto": {
+            "type": "number",
+            "description": "Cena bez DPH.",
+            "format": "double",
+            "nullable": true
+          },
+          "priceBruttoCurrency": {
+            "type": "number",
+            "description": "Devizová cena s DPH.",
+            "format": "double"
+          },
+          "priceNettoCurrency": {
+            "type": "number",
+            "description": "Devizová cena bez DPH.",
+            "format": "double",
+            "nullable": true
+          },
+          "rate": {
+            "type": "number",
+            "description": "Kurz.",
+            "format": "double"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Vyřízeno."
+          },
+          "invoiceAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.AddressModel"
+          },
+          "supplierInvoiceAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.AddressModel"
+          },
+          "deliveryAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.AddressModel"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Orders.OrderB2BItemModel"
+            },
+            "description": "Položky objednávky.",
+            "nullable": true
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.OrderRuleModel"
+            },
+            "description": "Pravidla objednávky.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro detail B2B objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.OrderDetailB2CModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID objednávky.",
+            "format": "int32"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Číslo objednávky.",
+            "nullable": true
+          },
+          "noteExternal": {
+            "type": "string",
+            "description": "Externí poznámka.",
+            "nullable": true
+          },
+          "customerId": {
+            "type": "integer",
+            "description": "ID subjektu.",
+            "format": "int32"
+          },
+          "customerName": {
+            "type": "string",
+            "description": "Název subjektu.",
+            "nullable": true
+          },
+          "invoiceAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.AddressModel"
+          },
+          "invoiceEndUserAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.AddressExternalModel"
+          },
+          "deliveryEndUserAddress": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.AddressModel"
+          },
+          "endUserInfo": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.EndUserInfoModel"
+          },
+          "transport": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.TransportModel"
+          },
+          "dateCreated": {
+            "type": "string",
+            "description": "Datum vytvoření.",
+            "format": "date-time"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.CurrencyModel"
+          },
+          "priceVat": {
+            "type": "number",
+            "description": "Cena s DPH.",
+            "format": "double",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "description": "Cena bez DPH.",
+            "format": "double",
+            "nullable": true
+          },
+          "rate": {
+            "type": "number",
+            "description": "Kurz.",
+            "format": "double"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Vyřízeno."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ItemModel"
+            },
+            "description": "Položky objednávky.",
+            "nullable": true
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.RuleModel"
+            },
+            "description": "Pravidla objednávky.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Detail objednávky B2C."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.OrderTypeModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID typu objednávky.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód typu objednávky.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název typu objednávky.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro typ objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Orders.UpdateOrderRuleModel": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Kód pravidla.",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "description": "Hodnota pravidla.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro update pravidel objednávky."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Packages.PackageModel": {
+        "type": "object",
+        "properties": {
+          "packageNumber": {
+            "type": "string",
+            "description": "Číslo balíku.",
+            "nullable": true
+          },
+          "transportId": {
+            "type": "integer",
+            "description": "Id dopravy.",
+            "format": "int32"
+          },
+          "cashOnDelivery": {
+            "type": "number",
+            "description": "Částka dobírky.",
+            "format": "double"
+          },
+          "dateDeparture": {
+            "type": "string",
+            "description": "Datum odeslání.",
+            "format": "date-time"
+          },
+          "curId": {
+            "type": "integer",
+            "description": "Id měny.",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model balíku."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.CreateProductCatalogModel": {
+        "required": [
+          "catalogType"
+        ],
+        "type": "object",
+        "properties": {
+          "catalogType": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Business.Products.CatalogType"
+          },
+          "onStock": {
+            "type": "boolean",
+            "description": "Příznak vrácení pouze produktů skladem.",
+            "nullable": true
+          },
+          "regionMask": {
+            "type": "integer",
+            "description": "Maska regionu.",
+            "format": "int32",
+            "nullable": true
+          },
+          "regionZeroIncluded": {
+            "type": "boolean",
+            "description": "Zahrnutí nedefinovaného regionu.",
+            "nullable": true
+          },
+          "countryIdFee": {
+            "type": "integer",
+            "description": "ID země poplatků.",
+            "format": "int32",
+            "nullable": true
+          },
+          "currencyId": {
+            "type": "integer",
+            "description": "ID měny.",
+            "format": "int32",
+            "nullable": true
+          },
+          "canceled": {
+            "type": "boolean",
+            "description": "Příznak vrácení také zrušených položek.",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "description": "API model pro generování katalogu."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProducerModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id výrobce.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název výrobce.",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód výrobce.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Informace o výrobci."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductCatalogModel": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/Elinkx.Esyco.Services.Core.Db.Utilities.State"
+          },
+          "stateChanged": {
+            "type": "string",
+            "description": "Datum a čas poslední změny stavu u celkové dávky.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "integer",
+            "description": "Chybový kód.",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Popis chyby.",
+            "nullable": true
+          },
+          "infoMessage": {
+            "type": "string",
+            "description": "Informační zpráva. Nemusí se jednat o chybu, ale může nějakým způsobem upozorňovat uživatele, že může nastat problém.\r\nNapř. že brzy vyprší licence a záznamy se nebudou zpracovávat nebo že byl překročen denní limit apod...",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "description": "Název vygenerovaného souboru.",
+            "nullable": true
+          },
+          "transactionId": {
+            "type": "string",
+            "description": "Identifikátor pro klienty, kterým si může vyžádát informaci o stavu jeho dávky.",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro výsledek generování katalogu produktů."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductCommodityModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id komodity.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název komodity.",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód komodity.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Objekt komodit."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductGenerateCatalogResultModel": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string",
+            "description": "Identifikátor pro klienty, kterým si může vyžádát informaci o stavu jeho dávky.",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro výsledek založení požadavku na generování katalogu produktů."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID produktu.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název produktu.",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód produktu.",
+            "nullable": true
+          },
+          "partNumber": {
+            "type": "string",
+            "description": "Part No.",
+            "nullable": true
+          },
+          "ean": {
+            "type": "string",
+            "description": "EAN produktu.",
+            "nullable": true
+          },
+          "visible": {
+            "type": "boolean",
+            "description": "Viditelný produkt.",
+            "nullable": true
+          },
+          "reject": {
+            "type": "boolean",
+            "description": "Vyřazený produkt."
+          },
+          "top": {
+            "type": "boolean",
+            "description": "Top produkt."
+          },
+          "externalCode": {
+            "type": "string",
+            "description": "Externí číslo produktu.",
+            "nullable": true
+          },
+          "commodity": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductCommodityModel"
+          },
+          "warranty": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductWarrantyModel"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductUnitModel"
+          },
+          "navigatorCategory": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductNavigatorCategoryModel"
+          },
+          "producer": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProducerModel"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Products.ProductStatusModel"
+          },
+          "extendedStatuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Elinkx.Dropship.Api.Web.Models.Codelist.ExtendedStatusesModel"
+            },
+            "description": "Kolekce rozšířených stavů produktu.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Produkt."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductNavigatorCategoryModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id kategorie.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název kategorie.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Informace o kategorii produktu."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductStatusModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id statusu.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název statusu.",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód statusu.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Informace o statusu produktu."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductUnitModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id jednotky množství.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název jednotky množství.",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód jednotky množství.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Informace o jednotce množství."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Products.ProductWarrantyModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id záruky.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název záruky.",
+            "nullable": true
+          },
+          "length": {
+            "type": "integer",
+            "description": "Délka záruky.",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Informace o záruce."
+      },
+      "Elinkx.Dropship.Api.Web.Models.Shared.ProductLinkModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id produktu.",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "description": "Kód produktu.",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Název produktu.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model pro přilinkovaný produkt."
+      },
+      "Elinkx.Esyco.Services.Core.Db.Utilities.State": {
+        "enum": [
+          "Undefined",
+          "Accepted",
+          "InProcess",
+          "Inserted",
+          "Updated",
+          "Deleted",
+          "Rejected",
+          "Cancelled",
+          "Error",
+          "Generated",
+          "Successful"
+        ],
+        "type": "string"
+      },
+      "Elinkx.Esyco.Services.RestServiceBase.Models.InfoModel": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "node": {
+            "type": "string",
+            "nullable": true
+          },
+          "application": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Microsoft.AspNetCore.Mvc.ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": { }
+      }
+    },
+    "securitySchemes": {
+      "oauth2": {
+        "type": "http",
+        "description": "JWT autorizační header využívající Bearer schéma. \r\n\r\n Vlož 'Bearer {token}' do textboxu níže.",
+        "scheme": "Bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth2": [ ]
+    }
+  ]
+}

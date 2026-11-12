@@ -1,0 +1,12 @@
+# Lokální nastavení a tajné údaje
+.claude/settings.local.json
+.env*
+
+# Závislosti a výstup buildu
+node_modules/
+dist/
+
+# Pracovní podklady, jen lokálně (ZADANI.md, část 13)
+source-docs/
+.scratch/
+ZADANI.md
