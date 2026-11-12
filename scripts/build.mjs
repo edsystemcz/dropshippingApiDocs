@@ -35,8 +35,8 @@ const specFileName = (slug) => `openapi.${slug}.json`;
  * `rootPath` je cesta ze stránky ke kořeni výstupu, kde leží společné soubory.
  */
 const LANGUAGES = [
-  { code: 'cs', dir: '', rootPath: '', pageTitle: 'Dokumentace Dropshipping API' },
-  { code: 'en', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation' },
+  { code: 'cs', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system' },
+  { code: 'en', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system' },
 ];
 
 /** Vyplní zástupné symboly {{název}} v šabloně stránky; neznámý symbol je chyba. */
@@ -108,6 +108,7 @@ const siteAssets = (repoRoot) => {
   const mono = join(repoRoot, 'node_modules/@fontsource-variable/jetbrains-mono');
   return [
     { from: join(repoRoot, 'node_modules/@scalar/api-reference/dist/browser/standalone.js'), to: 'assets/scalar/standalone.js' },
+    { from: join(repoRoot, 'site/assets/favicon.svg'), to: 'assets/favicon.svg' },
     { from: join(repoRoot, 'site/fonts.css'), to: 'assets/fonts/fonts.css' },
     ...['latin', 'latin-ext'].flatMap((subset) => [
       { from: join(inter, `files/inter-${subset}-wght-normal.woff2`), to: `assets/fonts/inter-${subset}-wght-normal.woff2` },

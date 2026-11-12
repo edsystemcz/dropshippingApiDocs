@@ -28,6 +28,7 @@ test('výstup obsahuje právě vyjmenované soubory', async () => {
     .sort();
 
   assert.deepEqual(files, [
+    'assets/favicon.svg',
     'assets/fonts/LICENSE-inter.txt',
     'assets/fonts/LICENSE-jetbrains-mono.txt',
     'assets/fonts/fonts.css',
@@ -110,4 +111,9 @@ test('stránka předává Scalaru prostředí z environments.json, PROD jako vý
   const sources = JSON.parse(/sources: (\[.*\]),/.exec(content)[1]);
 
   assert.deepEqual(sources.map(({ slug, default: isDefault }) => [slug, isDefault]), [['prod', true], ['test', false]]);
+});
+
+test('stránky mají ikonu z přibalených souborů', async () => {
+  assert.match(await read('index.html'), /<link rel="icon" type="image\/svg\+xml" href="assets\/favicon\.svg">/);
+  assert.match(await read('en/index.html'), /<link rel="icon" type="image\/svg\+xml" href="\.\.\/assets\/favicon\.svg">/);
 });

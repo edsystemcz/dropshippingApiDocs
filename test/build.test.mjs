@@ -142,8 +142,8 @@ test('titulek stránky je v jazyce dané verze', async () => {
 
   await run(inputs);
 
-  assert.match(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), /<title>Dokumentace Dropshipping API<\/title>/);
-  assert.match(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), /<title>Dropshipping API documentation<\/title>/);
+  assert.match(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), /<title>Dropshipping API dokumentace \| eD system<\/title>/);
+  assert.match(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), /<title>Dropshipping API documentation \| eD system<\/title>/);
 });
 
 test('neznámý zástupný symbol v šabloně stránky shodí build', async () => {
