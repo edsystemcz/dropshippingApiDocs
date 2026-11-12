@@ -23,6 +23,7 @@ import { tmpdir } from 'node:os';
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, siteInputs } from './build.mjs';
+import { environmentLabel } from './environments.mjs';
 import { operations } from './openapi.mjs';
 
 /** Podsložka, ze které se web servíruje, aby se ověřily relativní cesty. */
@@ -338,7 +339,7 @@ try {
       const problems = await verifyPage({ debugPort: chrome.port, url, environments: inputs.environments, expectedOperations });
       const label = `${languageDir || 'cs/'} na ${host}`;
       if (problems.length === 0) {
-        console.log(`✔ ${label}: operací ${Object.entries(expectedOperations).map(([slug, addresses]) => `${slug.toUpperCase()} ${addresses.length}`).join(', ')}; žádná cizí adresa; úložiště v pořádku`);
+        console.log(`✔ ${label}: operací ${Object.entries(expectedOperations).map(([slug, addresses]) => `${environmentLabel(slug)} ${addresses.length}`).join(', ')}; žádná cizí adresa; úložiště v pořádku`);
       } else {
         failed = true;
         console.error(`✖ ${label}`);

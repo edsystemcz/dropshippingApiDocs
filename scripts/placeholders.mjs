@@ -10,6 +10,3 @@ export const fillPlaceholders = (text, values, where) =>
     if (!Object.hasOwn(values, name)) throw new Error(`${where} obsahuje neznámý zástupný symbol ${symbol}`);
     return values[name];
   });
-
-/** Hodnoty symbolů, které se liší mezi prostředími. */
-export const environmentValues = ({ slug, baseUrl, tokenUrl }) => ({ baseUrl, tokenUrl, envSlug: slug });

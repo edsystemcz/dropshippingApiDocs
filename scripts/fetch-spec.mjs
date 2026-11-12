@@ -7,6 +7,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { environmentLabel } from './environments.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
 
 const TIMEOUT_MS = 30_000;
@@ -54,7 +55,7 @@ export async function fetchSpecs({ environments, specDir, fetchImpl = fetch, log
   await mkdir(specDir, { recursive: true });
   const results = [];
   for (const { slug, specUrl } of environments) {
-    const label = slug.toUpperCase();
+    const label = environmentLabel(slug);
     const path = sourceSpecPath(specDir, slug);
 
     let downloaded;

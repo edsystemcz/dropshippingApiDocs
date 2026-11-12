@@ -5,6 +5,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Validator } from '@seriousme/openapi-schema-validator';
+import { environmentLabel } from './environments.mjs';
 import { operations } from './openapi.mjs';
 import { applyOverlays, readOverlays } from './overlay.mjs';
 import { fillPlaceholders } from './placeholders.mjs';
@@ -16,7 +17,7 @@ import { buildNumber, sourceSpecPath } from './source-spec.mjs';
  */
 function specForEnvironment(source, environment, apiBuild, log) {
   if (!apiBuild) {
-    log.warn(`${environment.slug.toUpperCase()}: číslo buildu se z titulku nepodařilo vyčíst, verze zůstává ${source.info.version}`);
+    log.warn(`${environmentLabel(environment.slug)}: číslo buildu se z titulku nepodařilo vyčíst, verze zůstává ${source.info.version}`);
   }
   return { ...source, info: { ...source.info, title: environment.title, version: apiBuild ?? source.info.version } };
 }
@@ -92,7 +93,7 @@ export async function build({ environments, specDir, overlayDir, siteDir, outDir
   const specs = applyOverlays({ specs: titled, environments, overlays, log });
   const validator = new Validator();
   for (const [slug, spec] of specs) {
-    const label = slug.toUpperCase();
+    const label = environmentLabel(slug);
     await assertValidOpenApi(validator, spec, label);
     // Počítá se výsledná specifikace: na webu jsou i operace doplněné z overlay.
     const apiBuild = apiBuilds.get(slug);

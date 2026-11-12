@@ -22,8 +22,9 @@
 
 import { readFile, readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
+import { environmentLabel, environmentValues } from './environments.mjs';
 import { HTTP_METHODS, operations } from './openapi.mjs';
-import { environmentValues, fillPlaceholders } from './placeholders.mjs';
+import { fillPlaceholders } from './placeholders.mjs';
 
 const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -155,7 +156,7 @@ export function applyOverlays({ specs, environments, overlays, log }) {
   const explicitNames = new Map(schemaNames.map(({ schema, display }) => [schema, display]));
   const result = new Map();
   for (const environment of environments) {
-    const label = environment.slug.toUpperCase();
+    const label = environmentLabel(environment.slug);
     const source = specs.get(environment.slug);
     for (const { target, schema } of schemaNames) count(target, Object.hasOwn(source.components?.schemas ?? {}, schema));
     let spec = shortenSchemaNames(source, explicitNames);
