@@ -10,6 +10,7 @@
   "scripts": {
     "fetch-spec": "node scripts/fetch-spec.mjs",
     "build": "node scripts/build.mjs",
+    "verify": "node scripts/verify-browser.mjs",
     "test": "node --test"
   },
   "devDependencies": {
