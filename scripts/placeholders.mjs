@@ -3,10 +3,12 @@
 
 /**
  * Vyplní zástupné symboly v textu. Neznámý symbol je chyba; `where` říká,
- * odkud text pochází, aby hlášení vedlo ke správnému souboru.
+ * odkud text pochází, aby hlášení vedlo ke správnému souboru. Symbol je
+ * cokoli ve dvojitých složených závorkách, takže ani `{{ baseUrl }}`
+ * s mezerami neprojde do výstupu bez povšimnutí.
  */
 export const fillPlaceholders = (text, values, where) =>
-  text.replace(/\{\{(\w+)\}\}/g, (symbol, name) => {
+  text.replace(/\{\{([^{}]*)\}\}/g, (symbol, name) => {
     if (!Object.hasOwn(values, name)) throw new Error(`${where} obsahuje neznámý zástupný symbol ${symbol}`);
     return values[name];
   });

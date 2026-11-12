@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { build } from '../scripts/build.mjs';
 
 const ENVIRONMENTS = [
@@ -35,11 +35,16 @@ const sourceSpec = (title, paths = { '/Info': { get: operation('Info') } }, comp
 const TEMPLATE = '<html lang="{{lang}}"><title>{{pageTitle}}</title><script src="{{rootPath}}assets/app.js"></script><script>start({{sources}})</script></html>';
 
 /** Založí zdrojové složky s daným obsahem a vrátí vstupy pro build. */
-async function project({ specs, overlays = {}, template = TEMPLATE, assets = {} }) {
+async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS }) {
   const dir = await mkdtemp(join(tmpdir(), 'build-'));
   const specDir = join(dir, 'spec');
   const overlayDir = join(dir, 'overlay');
   const siteDir = join(dir, 'site');
+  const contentDir = join(dir, 'content');
+  for (const [path, text] of Object.entries(content)) {
+    await mkdir(dirname(join(contentDir, path)), { recursive: true });
+    await writeFile(join(contentDir, path), text);
+  }
   await mkdir(specDir);
   await mkdir(overlayDir);
   await mkdir(siteDir);
@@ -51,12 +56,12 @@ async function project({ specs, overlays = {}, template = TEMPLATE, assets = {} 
   }
   await writeFile(join(siteDir, 'index.html'), template);
   const assetList = [];
-  for (const [to, content] of Object.entries(assets)) {
+  for (const [to, bytes] of Object.entries(assets)) {
     const from = join(dir, `asset-${assetList.length}`);
-    await writeFile(from, content);
+    await writeFile(from, bytes);
     assetList.push({ from, to });
   }
-  return { environments: ENVIRONMENTS, specDir, overlayDir, siteDir, outDir: join(dir, 'dist'), assets: assetList };
+  return { environments, specDir, overlayDir, contentDir, siteDir, outDir: join(dir, 'dist'), assets: assetList };
 }
 
 async function run(inputs) {
@@ -663,4 +668,545 @@ test('počet operací ve výpisu zahrnuje operace doplněné z overlay', async (
   const { output } = await run(inputs);
 
   assert.match(output, /^INFO PROD: build 1\.1\.122, operací: 2$/m);
+});
+
+// Texty: soubory z content/<jazyk>/ build vkládá do specifikace každého prostředí.
+
+test('úvod se složí z kapitol v pořadí podle názvů souborů, v každém jazyce ze svých textů', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: {
+      'cs/intro/20-autentizace.md': '# Autentizace\n\nToken se posílá v hlavičce.\n',
+      'cs/intro/10-uvod.md': '# Úvod\n\nK čemu API slouží.\n\n## Přehled operací\n\nTabulka.\n',
+      'en/intro/10-introduction.md': '# Introduction\n\nWhat the API is for.\n',
+    },
+  });
+
+  await run(inputs);
+
+  for (const slug of ['prod', 'test']) {
+    assert.equal(
+      (await readJson(inputs.outDir, `openapi.${slug}.json`)).info.description,
+      '# Úvod\n\nK čemu API slouží.\n\n## Přehled operací\n\nTabulka.\n\n# Autentizace\n\nToken se posílá v hlavičce.',
+    );
+    assert.equal((await readJson(inputs.outDir, 'en', `openapi.${slug}.json`)).info.description, '# Introduction\n\nWhat the API is for.');
+  }
+});
+
+const catalogOperations = () => ({
+  '/Info': { get: operation('Info') },
+  '/codelists/ProductCategory': { get: operation('Codelist') },
+  '/products/catalog': { get: operation('Products'), post: operation('Products') },
+  '/files/{fileName}': { get: downloadOperation },
+});
+
+test('text skupiny se páruje podle technického názvu skupiny, ne podle zobrazovaného', async () => {
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', catalogOperations());
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    overlays: { 'base.json': { tags: [{ name: 'Info' }, { name: 'Products', 'x-displayName': 'Katalog produktů' }] } },
+    content: {
+      'cs/tags/Products.md': 'Generování a stažení katalogu.\n',
+      'cs/tags/Codelist.md': 'Číselníky.\n',
+    },
+  });
+
+  await run(inputs);
+
+  // Skupina, kterou overlay neuvádí, se zařadí za uvedené.
+  assert.deepEqual((await readJson(inputs.outDir, 'openapi.test.json')).tags, [
+    { name: 'Info' },
+    { name: 'Products', 'x-displayName': 'Katalog produktů', description: 'Generování a stažení katalogu.' },
+    { name: 'Codelist', description: 'Číselníky.' },
+  ]);
+  assert.deepEqual((await readJson(inputs.outDir, 'en', 'openapi.test.json')).tags, [
+    { name: 'Info' },
+    { name: 'Products', 'x-displayName': 'Katalog produktů' },
+  ]);
+});
+
+test('popis operace se páruje podle metody a cesty včetně velikosti písmen', async () => {
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', catalogOperations());
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    content: {
+      'cs/operations/get__Info.md': 'Stav služby.\n',
+      'cs/operations/get__codelists_ProductCategory.md': 'Kategorie.\n',
+      'cs/operations/post__products_catalog.md': 'Založení jobu.\n',
+      'cs/operations/get__files_{fileName}.md': 'Stažení katalogového souboru.\n',
+    },
+  });
+
+  await run(inputs);
+
+  const { paths } = await readJson(inputs.outDir, 'openapi.prod.json');
+  assert.equal(paths['/Info'].get.description, 'Stav služby.');
+  assert.equal(paths['/codelists/ProductCategory'].get.description, 'Kategorie.');
+  assert.equal(paths['/products/catalog'].post.description, 'Založení jobu.');
+  assert.equal(paths['/products/catalog'].get.description, undefined);
+  assert.equal(paths['/files/{fileName}'].get.description, 'Stažení katalogového souboru.');
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.prod.json')).paths['/Info'].get.description, undefined);
+});
+
+test('osiřelý popis operace shodí build, pojmenuje soubor a nic nezapíše', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: {
+      'cs/operations/get__Info.md': 'Stav služby.\n',
+      'cs/operations/get__products_catalog.md': 'Stav jobu.\n',
+    },
+  });
+
+  await assert.rejects(run(inputs), (error) => {
+    assert.match(error.message, /Osiřelé texty/);
+    assert.match(error.message, /content\/cs\/operations\/get__products_catalog\.md/);
+    assert.doesNotMatch(error.message, /get__Info\.md/);
+    return true;
+  });
+  await assert.rejects(readFile(join(inputs.outDir, 'openapi.prod.json')), { code: 'ENOENT' });
+});
+
+test('popis operace s jinou velikostí písmen než cesta je osiřelý a hlášení poradí správný název', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), content: { 'en/operations/get__info.md': 'Service status.\n' } });
+
+  await assert.rejects(run(inputs), /content\/en\/operations\/get__info\.md.*get__Info\.md/);
+});
+
+test('osiřelý text skupiny shodí build', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), content: { 'cs/tags/Info.md': 'Stav služby.\n', 'cs/tags/Orders.md': 'Objednávky.\n' } });
+
+  await assert.rejects(run(inputs), (error) => {
+    assert.match(error.message, /content\/cs\/tags\/Orders\.md/);
+    assert.doesNotMatch(error.message, /tags\/Info\.md/);
+    return true;
+  });
+});
+
+test('text k operaci a skupině, které jsou jen v jednom prostředí, se vloží jen tam a build projde', async () => {
+  const inputs = await project({
+    specs: {
+      prod: sourceSpec('Dropshipping API Gateway service, build: 1.1.122'),
+      test: sourceSpec('Dropshipping API Gateway service, build: 1.1.123', twoOperations()),
+    },
+    content: {
+      'cs/operations/get__codelists_ProductIndex.md': 'Produktové indexy.\n',
+      'cs/tags/Codelist.md': 'Číselníky.\n',
+    },
+  });
+
+  await run(inputs);
+
+  const test = await readJson(inputs.outDir, 'openapi.test.json');
+  assert.equal(test.paths['/codelists/ProductIndex'].get.description, 'Produktové indexy.');
+  assert.deepEqual(test.tags, [{ name: 'Codelist', description: 'Číselníky.' }]);
+  const prod = await readJson(inputs.outDir, 'openapi.prod.json');
+  assert.deepEqual(Object.keys(prod.paths), ['/Info']);
+  assert.equal(prod.tags, undefined);
+});
+
+test('soubor, který není text úvodu, skupiny ani operace, shodí build; šablona s podtržítkem a skryté soubory se přeskočí', async () => {
+  const content = {
+    'cs/_sablona-operace.md': '# Šablona\n\n[odkaz](nikam.md) {{cokoli}}\n',
+    'cs/operations/get__Info.md': 'Stav služby.\n',
+    'cs/operations/.DS_Store': 'soubor systému',
+    'cs/tags/.gitkeep': '',
+  };
+  const valid = await project({ specs: bothAt('1.1.122'), content });
+  await run(valid);
+  assert.equal((await readJson(valid.outDir, 'openapi.prod.json')).paths['/Info'].get.description, 'Stav služby.');
+
+  for (const stray of ['cs/poznamky.md', 'cs/operations/get__Info.txt', 'cs/operations/katalog/get__Info.md', 'cs/tagy/Info.md']) {
+    const inputs = await project({ specs: bothAt('1.1.122'), content: { ...content, [stray]: 'Text.\n' } });
+    await assert.rejects(run(inputs), new RegExp(`content/${stray.replaceAll('.', '\\.')}`), stray);
+  }
+});
+
+test('zástupné symboly v textech dostanou hodnoty svého prostředí, i uvnitř ukázek kódu', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\n\nAdresa API je `{{baseUrl}}`, kolekce [ke stažení](postman.{{envSlug}}.json).\n',
+      'cs/tags/Info.md': 'Token vydává {{tokenUrl}}.\n',
+      'cs/operations/get__Info.md': '```bash\ncurl {{baseUrl}}/Info\n```\n',
+    },
+  });
+
+  await run(inputs);
+
+  const prod = await readJson(inputs.outDir, 'openapi.prod.json');
+  assert.equal(prod.info.description, '# Úvod\n\nAdresa API je `https://api.example.cz`, kolekce [ke stažení](postman.prod.json).');
+  assert.equal(prod.tags[0].description, 'Token vydává https://auth.example.cz/oauth/token.');
+  assert.equal(prod.paths['/Info'].get.description, '```bash\ncurl https://api.example.cz/Info\n```');
+  const test = await readJson(inputs.outDir, 'openapi.test.json');
+  assert.equal(test.info.description, '# Úvod\n\nAdresa API je `https://api-test.example.cz`, kolekce [ke stažení](postman.test.json).');
+  assert.equal(test.tags[0].description, 'Token vydává https://auth-test.example.cz/oauth/token.');
+  assert.equal(test.paths['/Info'].get.description, '```bash\ncurl https://api-test.example.cz/Info\n```');
+});
+
+test('neznámý zástupný symbol v textu shodí build a hlášení pojmenuje soubor', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: { 'en/operations/get__Info.md': 'Call {{apiUrl}}/Info.\n' },
+  });
+
+  await assert.rejects(run(inputs), /content\/en\/operations\/get__Info\.md.*\{\{apiUrl\}\}/);
+
+  for (const symbol of ['{{ baseUrl }}', '{{base-url}}', '{{base.url}}', '{{}}']) {
+    const other = await project({ specs: bothAt('1.1.122'), content: { 'cs/operations/get__Info.md': `Volejte ${symbol}/Info.\n` } });
+    await assert.rejects(run(other), /content\/cs\/operations\/get__Info\.md.*neznámý zástupný symbol \{\{/, symbol);
+  }
+});
+
+const NOTICE = { cs: 'Toto je dokumentace testovacího prostředí.', en: 'This is the documentation of the test environment.' };
+/** Prostředí, kde TEST má upozornění. */
+const withNotice = (notice = NOTICE) => ENVIRONMENTS.map((environment) => (environment.slug === 'test' ? { ...environment, notice } : environment));
+
+test('u prostředí s upozorněním je upozornění hned pod prvním nadpisem úvodu, v jazyce dané verze', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    environments: withNotice(),
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\n\nK čemu API slouží.\n',
+      'cs/intro/20-autentizace.md': '# Autentizace\n\nToken.\n',
+      'en/intro/10-introduction.md': '# Introduction\n\nWhat the API is for.\n',
+    },
+  });
+
+  await run(inputs);
+
+  assert.equal(
+    (await readJson(inputs.outDir, 'openapi.test.json')).info.description,
+    '# Úvod\n\n> [!WARNING]\n> Toto je dokumentace testovacího prostředí.\n\nK čemu API slouží.\n\n# Autentizace\n\nToken.',
+  );
+  assert.equal(
+    (await readJson(inputs.outDir, 'en', 'openapi.test.json')).info.description,
+    '# Introduction\n\n> [!WARNING]\n> This is the documentation of the test environment.\n\nWhat the API is for.',
+  );
+  assert.equal((await readJson(inputs.outDir, 'openapi.prod.json')).info.description, '# Úvod\n\nK čemu API slouží.\n\n# Autentizace\n\nToken.');
+});
+
+test('úvod začíná nadpisem, takže v menu nevznikne položka navíc; kapitola bez nadpisu na začátku shodí build', async () => {
+  const content = { 'cs/intro/10-uvod.md': '# Úvod\n\nText.\n', 'cs/intro/20-autentizace.md': 'Token se posílá v hlavičce.\n\n# Autentizace\n' };
+  const inputs = await project({ specs: bothAt('1.1.122'), environments: withNotice(), content });
+
+  await assert.rejects(run(inputs), /content\/cs\/intro\/20-autentizace\.md.*nadpis/);
+
+  const fixed = await project({ specs: bothAt('1.1.122'), environments: withNotice(), content: { ...content, 'cs/intro/20-autentizace.md': '\n# Autentizace\n\nToken.\n' } });
+  await run(fixed);
+  for (const slug of ['prod', 'test']) {
+    assert.match((await readJson(fixed.outDir, `openapi.${slug}.json`)).info.description, /^# Úvod\n/);
+  }
+});
+
+test('upozornění bez znění pro některý jazyk shodí build', async () => {
+  const environments = withNotice({ cs: NOTICE.cs });
+  const inputs = await project({ specs: bothAt('1.1.122'), environments, content: { 'en/intro/10-introduction.md': '# Introduction\n' } });
+
+  await assert.rejects(run(inputs), /TEST.*notice.*en/);
+});
+
+test('konce řádků ve výsledné specifikaci jsou jednotné, ať přišly z textů, overlay nebo ze zdroje', async () => {
+  const paths = { '/Info': { get: operation('Info', { summary: 'Stav služby.\r\nDruhý řádek.' }) } };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths);
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    overlays: { 'base.json': { tags: [{ name: 'Info', 'x-displayName': 'Stav\r\nslužby' }] } },
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\r\n\r\nText z Windows.\r\n',
+      'cs/operations/get__Info.md': 'První řádek.\r\nDruhý řádek.\rTřetí řádek.\r\n',
+    },
+  });
+
+  await run(inputs);
+
+  for (const file of ['openapi.prod.json', 'en/openapi.test.json']) {
+    assert.doesNotMatch(await readFile(join(inputs.outDir, file), 'utf8'), /\r|\\r/, file);
+  }
+  const prod = await readJson(inputs.outDir, 'openapi.prod.json');
+  assert.equal(prod.info.description, '# Úvod\n\nText z Windows.');
+  assert.equal(prod.paths['/Info'].get.description, 'První řádek.\nDruhý řádek.\nTřetí řádek.');
+  assert.equal(prod.paths['/Info'].get.summary, 'Stav služby.\nDruhý řádek.');
+  assert.equal(prod.tags[0]['x-displayName'], 'Stav\nslužby');
+});
+
+// Odkazy mezi texty: autor píše odkaz na soubor, build ho převede na adresu ve Scalaru.
+
+const catalogSpec = () => sourceSpec('Dropshipping API Gateway service, build: 1.1.122', catalogOperations());
+
+const GUIDE = '# Synchronizace katalogu\n\nPrůvodce.\n\n## Full a Update katalog\n\nRozdíl.\n\n### Rozdílový základ – co to je?\n\nZáklad.\n';
+
+test('odkaz na soubor s textem vede na webu na kapitolu, nadpis, skupinu nebo operaci ve zvoleném prostředí', async () => {
+  const inputs = await project({
+    specs: { prod: catalogSpec(), test: catalogSpec() },
+    content: {
+      'cs/intro/10-uvod.md':
+        '# Úvod\n\nViz [průvodce](30-synchronizace-katalogu.md), [typy katalogu](./30-synchronizace-katalogu.md#full-a-update-katalog), ' +
+        '[založení jobu](../operations/post__products_catalog.md), [stažení](../operations/get__files_{fileName}.md "Stažení souboru"), ' +
+        '[kategorie](../operations/get__codelists_ProductCategory.md) a [katalog](../tags/Products.md).\n\n## Přehled operací\n\nTabulka.\n',
+      'cs/intro/30-synchronizace-katalogu.md': `${GUIDE}\nZpět na [přehled](10-uvod.md#přehled-operací) nebo [nahoru](#synchronizace-katalogu).\n`,
+      'cs/tags/Products.md': 'Postup popisuje [průvodce](../intro/30-synchronizace-katalogu.md).\n',
+      'cs/operations/post__products_catalog.md':
+        'Stav zjistí [GET](get__products_catalog.md). Pojmy: [rozdílový základ](../intro/30-synchronizace-katalogu.md#rozdílový-základ--co-to-je).\n',
+      'cs/operations/get__products_catalog.md': 'Stav jobu.\n',
+      'cs/operations/get__files_{fileName}.md': 'Stažení.\n',
+      'cs/operations/get__codelists_ProductCategory.md': 'Kategorie.\n',
+    },
+  });
+
+  await run(inputs);
+
+  const prod = await readJson(inputs.outDir, 'openapi.prod.json');
+  assert.equal(
+    prod.info.description,
+    '# Úvod\n\nViz [průvodce](#prod/description/synchronizace-katalogu), [typy katalogu](#prod/description/full-a-update-katalog), ' +
+      '[založení jobu](#prod/tag/products/POST/products/catalog), [stažení](#prod/tag/products/GET/files/{fileName} "Stažení souboru"), ' +
+      '[kategorie](#prod/tag/codelist/GET/codelists/ProductCategory) a [katalog](#prod/tag/products).\n\n## Přehled operací\n\nTabulka.\n\n' +
+      `${GUIDE}\nZpět na [přehled](#prod/description/přehled-operací) nebo [nahoru](#prod/description/synchronizace-katalogu).`,
+  );
+  assert.equal(prod.tags.find((tag) => tag.name === 'Products').description, 'Postup popisuje [průvodce](#prod/description/synchronizace-katalogu).');
+  assert.equal(
+    prod.paths['/products/catalog'].post.description,
+    'Stav zjistí [GET](#prod/tag/products/GET/products/catalog). Pojmy: [rozdílový základ](#prod/description/rozdílový-základ-co-to-je).',
+  );
+  const test = await readJson(inputs.outDir, 'openapi.test.json');
+  assert.equal(test.tags.find((tag) => tag.name === 'Products').description, 'Postup popisuje [průvodce](#test/description/synchronizace-katalogu).');
+  assert.match(test.paths['/products/catalog'].post.description, /\[GET\]\(#test\/tag\/products\/GET\/products\/catalog\)/);
+});
+
+test('odkaz, který nikam nevede, shodí build a hlášení vyjmenuje všechny takové odkazy', async () => {
+  const inputs = await project({
+    specs: { prod: catalogSpec(), test: catalogSpec() },
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\n\n[průvodce](30-synchronizace.md), [typy](30-synchronizace-katalogu.md#typy-katalogu), [zadání](../../../ZADANI.md).\n',
+      'cs/intro/30-synchronizace-katalogu.md': GUIDE,
+      'cs/operations/get__Info.md': 'Viz [stav jobu](get__products_catalog.md) a [chyby](#časté-chyby).\n',
+    },
+  });
+
+  await assert.rejects(run(inputs), (error) => {
+    assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz 30-synchronizace\.md/);
+    assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz 30-synchronizace-katalogu\.md#typy-katalogu/);
+    assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/\.\.\/\.\.\/ZADANI\.md/);
+    assert.match(error.message, /content\/cs\/operations\/get__Info\.md: odkaz get__products_catalog\.md/);
+    assert.match(error.message, /content\/cs\/operations\/get__Info\.md: odkaz #časté-chyby/);
+    return true;
+  });
+  await assert.rejects(readFile(join(inputs.outDir, 'openapi.prod.json')), { code: 'ENOENT' });
+});
+
+test('odkazy v ukázkách kódu, odkazy na web a na jiné soubory než texty zůstanou beze změny', async () => {
+  const text =
+    'Web [eD system](https://www.edsystem.cz/kontakt.md), [kolekce](postman.prod.json), [pošta](mailto:podpora@example.cz).\n\n' +
+    'Zápis odkazu: `[průvodce](30-neexistuje.md)`.\n\n```markdown\n[průvodce](30-neexistuje.md)\n```';
+  const inputs = await project({ specs: bothAt('1.1.122'), content: { 'cs/operations/get__Info.md': `${text}\n` } });
+
+  await run(inputs);
+
+  assert.equal((await readJson(inputs.outDir, 'openapi.prod.json')).paths['/Info'].get.description, text);
+});
+
+test('odkaz na nadpis v popisu operace nebo v textu skupiny vede na operaci nebo skupinu', async () => {
+  const inputs = await project({
+    specs: { prod: catalogSpec(), test: catalogSpec() },
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\n\n[chyby](../operations/get__Info.md#časté-chyby), [pravidla](../tags/Products.md#pravidla).\n',
+      'cs/tags/Products.md': 'Text.\n\n## Pravidla\n\nPravidla.\n',
+      'cs/operations/get__Info.md': 'Popis.\n\n## Časté chyby\n\nŽádné.\n',
+    },
+  });
+
+  await run(inputs);
+
+  assert.equal((await readJson(inputs.outDir, 'openapi.prod.json')).info.description, '# Úvod\n\n[chyby](#prod/tag/info/GET/Info), [pravidla](#prod/tag/products).');
+});
+
+test('odkaz na operaci, která v prostředí není, tam zůstane jako prostý text a jinde vede na operaci', async () => {
+  const inputs = await project({
+    specs: {
+      prod: sourceSpec('Dropshipping API Gateway service, build: 1.1.122'),
+      test: sourceSpec('Dropshipping API Gateway service, build: 1.1.123', twoOperations()),
+    },
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\n\nNově: [produktové indexy](../operations/get__codelists_ProductIndex.md) a [číselníky](../tags/Codelist.md).\n',
+      'cs/operations/get__codelists_ProductIndex.md': 'Indexy.\n',
+      'cs/tags/Codelist.md': 'Číselníky.\n',
+    },
+  });
+
+  const { output } = await run(inputs);
+
+  assert.equal((await readJson(inputs.outDir, 'openapi.prod.json')).info.description, '# Úvod\n\nNově: produktové indexy a číselníky.');
+  assert.equal(
+    (await readJson(inputs.outDir, 'openapi.test.json')).info.description,
+    '# Úvod\n\nNově: [produktové indexy](#test/tag/codelist/GET/codelists/ProductIndex) a [číselníky](#test/tag/codelist).',
+  );
+  assert.match(output, /^INFO cs PROD: content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/operations\/get__codelists_ProductIndex\.md.*bez odkazu/m);
+});
+
+test('stejný nadpis ve dvou kapitolách dostane adresu s pořadím, jak ji přiděluje Scalar', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\n\n## Příklad\n\nPrvní. Viz [druhý příklad](20-autentizace.md#příklad) a [třetí](20-autentizace.md#příklad-1).\n',
+      'cs/intro/20-autentizace.md': '# Autentizace\n\n## Příklad\n\nDruhý.\n\n## Příklad\n\nTřetí. Viz [první příklad](10-uvod.md#příklad).\n',
+    },
+  });
+
+  await run(inputs);
+
+  const { description } = (await readJson(inputs.outDir, 'openapi.prod.json')).info;
+  assert.match(description, /\[druhý příklad\]\(#prod\/description\/příklad-1\)/);
+  assert.match(description, /\[třetí\]\(#prod\/description\/příklad-2\)/);
+  assert.match(description, /\[první příklad\]\(#prod\/description\/příklad\)/);
+});
+
+test('odkaz na text zapsaný definicí pod čarou shodí build, protože ho build nepřevádí', async () => {
+  const content = { 'cs/operations/get__Info.md': 'Stav služby.\n' };
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: { ...content, 'cs/intro/10-uvod.md': '# Úvod\n\nViz [stav služby][info].\n\n[info]: ../operations/get__Info.md\n' },
+  });
+
+  await assert.rejects(run(inputs), /content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/operations\/get__Info\.md.*\[text\]\(soubor\.md\)/);
+
+  const web = await project({
+    specs: bothAt('1.1.122'),
+    content: { ...content, 'cs/intro/10-uvod.md': '# Úvod\n\nViz [web][ed].\n\n[ed]: https://www.edsystem.cz\n' },
+  });
+  await run(web);
+});
+
+test('nadpis úvodní kapitoly s formátováním shodí build, protože Scalar by k položce menu nedoskočil', async () => {
+  for (const heading of ['## Element `Canceled`', '## Získání client_id a client_secret', '### Máme **tučné**?', '## [Odkaz](10-uvod.md)', '## Ceny &amp; poplatky']) {
+    const inputs = await project({ specs: bothAt('1.1.122'), content: { 'cs/intro/10-uvod.md': `# Úvod\n\n${heading}\n\nText.\n` } });
+    await assert.rejects(run(inputs), /content\/cs\/intro\/10-uvod\.md.*nadpis.*prostý text/s, heading);
+  }
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: {
+      'cs/intro/10-uvod.md':
+        '# Úvod\n\n## GET /files/{fileName} – stažení (ZIP), 1. část?\n\n## Parametr access_token & další\n\n```bash\n# komentář s `kódem`\n```\n',
+    },
+  });
+  await run(inputs);
+});
+
+test('nadpis úvodní kapitoly zapsaný podtržením shodí build, protože by rozhodil číslování adres nadpisů', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), content: { 'cs/intro/10-uvod.md': '# Úvod\n\nPříklad\n---\n\nText.\n' } });
+  await assert.rejects(run(inputs), /content\/cs\/intro\/10-uvod\.md.*„Příklad“.*podtržením/);
+
+  const table = '# Úvod\n\nText.\n\n---\n\n| Účel | Operace |\n| --- | --- |\n| a | b |\n\n```text\nPříklad\n---\n```\n';
+  await run(await project({ specs: bothAt('1.1.122'), content: { 'cs/intro/10-uvod.md': table } }));
+});
+
+// Pokrytí: výpis na konci buildu je seznam zbývající práce.
+
+test('build na konci vypíše pokrytí pro každý jazyk a prostředí a operace bez textu podle skupin', async () => {
+  const inputs = await project({
+    specs: {
+      prod: catalogSpec(),
+      test: sourceSpec('Dropshipping API Gateway service, build: 1.1.123', { ...catalogOperations(), '/codelists/ProductIndex': { get: operation('Codelist') } }),
+    },
+    overlays: { 'base.json': { tags: [{ name: 'Info' }, { name: 'Codelist' }, { name: 'Products' }] } },
+    content: {
+      'cs/tags/Products.md': 'Katalog.\n',
+      'cs/operations/post__products_catalog.md': 'Založení jobu.\n',
+      'cs/operations/get__codelists_ProductIndex.md': 'Indexy.\n',
+      'en/operations/get__Info.md': 'Service status.\n',
+    },
+  });
+
+  const { output } = await run(inputs);
+
+  const coverage = output.slice(output.indexOf('INFO Web sestaven'));
+  assert.equal(
+    coverage.slice(coverage.indexOf('\n') + 1),
+    [
+      'INFO cs PROD: popsáno 1 z 5 operací a 1 z 3 skupin',
+      'WARN cs PROD: skupiny bez textu: Info, Codelist',
+      'WARN cs PROD: operace bez textu:',
+      '  Info',
+      '    GET /Info',
+      '  Codelist',
+      '    GET /codelists/ProductCategory',
+      '  Products',
+      '    GET /products/catalog',
+      '    GET /files/{fileName}',
+      'INFO cs TEST: popsáno 2 z 6 operací a 1 z 3 skupin',
+      'WARN cs TEST: skupiny bez textu: Info, Codelist',
+      'WARN cs TEST: operace bez textu:',
+      '  Info',
+      '    GET /Info',
+      '  Codelist',
+      '    GET /codelists/ProductCategory',
+      '  Products',
+      '    GET /products/catalog',
+      '    GET /files/{fileName}',
+      'INFO en PROD: popsáno 1 z 5 operací a 0 z 3 skupin',
+      'WARN en PROD: skupiny bez textu: Info, Codelist, Products',
+      'WARN en PROD: operace bez textu:',
+      '  Codelist',
+      '    GET /codelists/ProductCategory',
+      '  Products',
+      '    GET /products/catalog',
+      '    POST /products/catalog',
+      '    GET /files/{fileName}',
+      'INFO en TEST: popsáno 1 z 6 operací a 0 z 3 skupin',
+      'WARN en TEST: skupiny bez textu: Info, Codelist, Products',
+      'WARN en TEST: operace bez textu:',
+      '  Codelist',
+      '    GET /codelists/ProductCategory',
+      '    GET /codelists/ProductIndex',
+      '  Products',
+      '    GET /products/catalog',
+      '    POST /products/catalog',
+      '    GET /files/{fileName}',
+    ].join('\n'),
+  );
+});
+
+test('jazyková verze, kde mají text všechny operace i skupiny, je ve výpisu pokrytí bez varování', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: { 'cs/tags/Info.md': 'Stav služby.\n', 'cs/operations/get__Info.md': 'Stav služby.\n' },
+  });
+
+  const { output } = await run(inputs);
+
+  assert.match(output, /^INFO cs PROD: popsáno 1 z 1 operací a 1 z 1 skupin$/m);
+  assert.doesNotMatch(output, /WARN cs/);
+  assert.match(output, /^WARN en TEST: operace bez textu:\n {2}Info\n {4}GET \/Info$/m);
+});
+
+test('operace, jejichž cesty se liší jen lomítkem a podtržítkem, se počítají obě a popis se stejným názvem souboru shodí build', async () => {
+  const paths = { '/a/b': { get: operation('Info') }, '/a_b': { get: operation('Info') } };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths);
+  const withoutText = await project({ specs: { prod: spec, test: spec } });
+
+  const { output } = await run(withoutText);
+
+  assert.match(output, /^INFO cs PROD: popsáno 0 z 2 operací a 0 z 1 skupin$/m);
+  assert.match(output, /^WARN cs PROD: operace bez textu:\n {2}Info\n {4}GET \/a\/b\n {4}GET \/a_b$/m);
+
+  const withText = await project({ specs: { prod: spec, test: spec }, content: { 'cs/operations/get__a_b.md': 'Popis.\n' } });
+  await assert.rejects(run(withText), /content\/cs\/operations\/get__a_b\.md.*GET \/a\/b.*GET \/a_b/);
+});
+
+test('skupina, která je u operace uvedená až jako druhá, se do pokrytí počítá také', async () => {
+  const paths = { '/Info': { get: operation('Info') }, '/Status': { get: { ...operation('Info'), tags: ['Info', 'Monitoring'] } } };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths);
+  const inputs = await project({ specs: { prod: spec, test: spec }, content: { 'cs/tags/Monitoring.md': 'Sledování.\n' } });
+
+  const { output } = await run(inputs);
+
+  assert.match(output, /^INFO cs PROD: popsáno 0 z 2 operací a 1 z 2 skupin$/m);
+  assert.match(output, /^WARN cs PROD: skupiny bez textu: Info$/m);
+  assert.match(output, /^WARN en PROD: skupiny bez textu: Info, Monitoring$/m);
+  assert.match(output, /^WARN cs PROD: operace bez textu:\n {2}Info\n {4}GET \/Info\n {4}GET \/Status$/m);
+});
+
+test('prázdný soubor s textem shodí build, aby se nepočítal jako popis', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), content: { 'cs/operations/get__Info.md': '\n \n', 'cs/tags/Info.md': 'Stav služby.\n' } });
+
+  await assert.rejects(run(inputs), /content\/cs\/operations\/get__Info\.md.*prázdný/);
 });

@@ -5,6 +5,8 @@
 // názvem hostitele, který vypadá veřejně (Scalar se na localhostu chová jinak):
 //   - menu ukazuje všechny operace každého prostředí a přepínač nabízí všechna;
 //     adresa operace vzniká z technického názvu skupiny, ne ze zobrazovaného,
+//   - položky menu z nadpisů úvodu a odkazy mezi texty, které build převedl na
+//     adresy ve Scalaru (scripts/scalar-addresses.mjs), vedou na existující místo,
 //   - stránka při načtení ani procházení nevolá žádnou cizí adresu (docs/adr/0002),
 //   - úložiště prohlížeče je prázdné, dokud návštěvník nepřepne barevný režim
 //     nebo jazyk ukázek kódu; na tom stojí zásady ochrany osobních údajů,
@@ -24,7 +26,9 @@ import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, siteInputs } from './build.mjs';
 import { environmentLabel } from './environments.mjs';
+import { linkDestinations } from './markdown.mjs';
 import { operations } from './openapi.mjs';
+import { operationAddress } from './scalar-addresses.mjs';
 
 /** Podsložka, ze které se web servíruje, aby se ověřily relativní cesty. */
 const SUBFOLDER = '/nejaka/podslozka/web/';
@@ -206,16 +210,30 @@ const operationLinks = (slug) =>
   `[...document.querySelectorAll('aside a')].map((link) => link.getAttribute('href')).filter((href) => /^#${slug}\\/tag\\/[^/]+\\/[A-Z]+\\//.test(href ?? ''))`;
 
 /**
- * Adresy operací, které má menu nabídnout pro specifikaci prostředí, jak ji
- * build zapsal: `#<prostředí>/tag/<skupina malými písmeny>/<METODA><cesta>`.
- * Zobrazovaný název skupiny (x-displayName) adresu měnit nesmí.
+ * Co má stránka pro specifikaci prostředí, jak ji build zapsal, ukázat:
+ * adresy operací v menu (zobrazovaný název skupiny je měnit nesmí) a cíle
+ * odkazů `[text](#…)`, na které build převedl odkazy mezi texty.
  */
-async function operationAddresses(specPath, slug) {
+async function expectedAddresses(specPath, slug) {
   const spec = JSON.parse(await readFile(specPath, 'utf8'));
-  return [...operations(spec)]
-    .map(({ path, method, operation }) => `#${slug}/tag/${operation.tags[0].toLowerCase()}/${method.toUpperCase()}${path}`)
-    .sort();
+  const texts = [spec.info.description, ...(spec.tags ?? []).map((tag) => tag.description), ...[...operations(spec)].map(({ operation }) => operation.description)];
+  return {
+    operations: [...operations(spec)].map(({ path, method, operation }) => operationAddress(slug, operation.tags?.[0], method, path)).sort(),
+    textLinks: [...new Set(texts.flatMap((text) => linkDestinations(text ?? '')).filter((destination) => destination.startsWith('#')))].sort(),
+  };
 }
+
+/**
+ * Výraz pro prohlížeč: adresy z `targets` a z položek menu pro nadpisy úvodu,
+ * které nikam nevedou. Nadpis úvodu musí být na stránce, skupina a operace
+ * v rozbaleném menu (operace se vykreslují až při posunu k nim).
+ */
+const brokenAddresses = (slug, targets) => `(() => {
+  const menu = [...document.querySelectorAll('aside a')].map((link) => decodeURIComponent(link.getAttribute('href') ?? ''));
+  const isHeading = (address) => address.startsWith('#${slug}/description/');
+  return [...new Set([...${JSON.stringify(targets)}, ...menu.filter(isHeading)])]
+    .filter((address) => (isHeading(address) ? !document.getElementById(address.slice(1)) : !menu.includes(address)));
+})()`;
 
 /** Rozdíl mezi adresami operací v menu a ve specifikaci, nebo null, když se shodují. */
 function addressMismatch(slug, inMenu, expected) {
@@ -228,7 +246,7 @@ function addressMismatch(slug, inMenu, expected) {
 /**
  * Projde jednu stránku a vrátí seznam zjištěných problémů (prázdný = v pořádku).
  */
-async function verifyPage({ debugPort, url, environments, expectedOperations }) {
+async function verifyPage({ debugPort, url, environments, expected }) {
   const problems = [];
   const expect = (condition, problem) => {
     if (!condition) problems.push(problem);
@@ -258,14 +276,20 @@ async function verifyPage({ debugPort, url, environments, expectedOperations }) 
         await sleep(250);
       }
     };
+    /** Po rozbalení menu: odkazy mezi texty a položky menu z nadpisů úvodu vedou na existující místo. */
+    const expectAddressesLead = async (slug) => {
+      const broken = await page.evaluate(brokenAddresses(slug, expected[slug].textLinks));
+      expect(broken.length === 0, `odkazy v textech nebo položky menu nikam nevedou: ${broken.join(', ')}`);
+    };
     const forbiddenLabels = () =>
       page.evaluate(`${JSON.stringify(FORBIDDEN_LABELS)}.filter((label) => [...document.querySelectorAll('button, a')].some((element) => new RegExp('\\\\b' + label + '\\\\b').test(${LABEL}(element))))`);
 
     // Menu výchozího prostředí a procházení všech operací.
     await openGroups();
     const menuLinks = await page.evaluate(operationLinks(defaultEnvironment.slug));
-    const defaultMismatch = addressMismatch(defaultEnvironment.slug, menuLinks, expectedOperations[defaultEnvironment.slug]);
+    const defaultMismatch = addressMismatch(defaultEnvironment.slug, menuLinks, expected[defaultEnvironment.slug].operations);
     expect(!defaultMismatch, defaultMismatch);
+    await expectAddressesLead(defaultEnvironment.slug);
     const seenForbidden = new Set(await forbiddenLabels());
     for (const href of menuLinks) {
       await page.click(`document.querySelector('aside a[href=${JSON.stringify(href)}]')`);
@@ -287,8 +311,9 @@ async function verifyPage({ debugPort, url, environments, expectedOperations }) 
     await page.waitFor(`location.hash.startsWith('#${otherEnvironment.slug}') && document.querySelector('h1')?.textContent.trim() === ${JSON.stringify(otherEnvironment.title)}`, `přepnutí na ${otherEnvironment.slug}`);
     await sleep(500);
     await openGroups();
-    const otherMismatch = addressMismatch(otherEnvironment.slug, await page.evaluate(operationLinks(otherEnvironment.slug)), expectedOperations[otherEnvironment.slug]);
+    const otherMismatch = addressMismatch(otherEnvironment.slug, await page.evaluate(operationLinks(otherEnvironment.slug)), expected[otherEnvironment.slug].operations);
     expect(!otherMismatch, otherMismatch);
+    await expectAddressesLead(otherEnvironment.slug);
     expect(same(await page.evaluate(STORAGE), EMPTY_STORAGE), 'úložiště není po přepnutí prostředí prázdné');
 
     // Barevný režim: přepne se bez načtení stránky a uloží jen svou volbu.
@@ -306,7 +331,8 @@ async function verifyPage({ debugPort, url, environments, expectedOperations }) 
     expect(same(finalStorage, { ...EMPTY_STORAGE, localStorage: [COLOR_MODE_KEY, CLIENT_KEY].sort() }), `úložiště po přepnutí režimu a jazyka ukázek: ${JSON.stringify(finalStorage)}`);
 
     // Síť a chyby.
-    const foreign = [...new Set(page.requests)].filter((request) => new URL(request).origin !== origin);
+    // Adresa `data:` nese obsah v sobě (ikona rámečku s upozorněním), po síti nic nejde.
+    const foreign = [...new Set(page.requests)].filter((request) => !request.startsWith('data:') && new URL(request).origin !== origin);
     expect(foreign.length === 0, `požadavky na cizí adresy: ${foreign.join(', ')}`);
     expect(page.errors.length === 0, `chyby v konzoli: ${page.errors.join(' | ')}`);
   } catch (error) {
@@ -330,16 +356,17 @@ try {
   chrome = await launchChrome(join(workDir, 'profile'));
 
   for (const languageDir of LANGUAGE_DIRS) {
-    const expectedOperations = {};
+    const expected = {};
     for (const { slug } of inputs.environments) {
-      expectedOperations[slug] = await operationAddresses(join(outDir, languageDir, `openapi.${slug}.json`), slug);
+      expected[slug] = await expectedAddresses(join(outDir, languageDir, `openapi.${slug}.json`), slug);
     }
     for (const host of ['127.0.0.1', PUBLIC_HOST]) {
       const url = `http://${host}:${server.port}${SUBFOLDER}${languageDir}`;
-      const problems = await verifyPage({ debugPort: chrome.port, url, environments: inputs.environments, expectedOperations });
+      const problems = await verifyPage({ debugPort: chrome.port, url, environments: inputs.environments, expected });
       const label = `${languageDir || 'cs/'} na ${host}`;
       if (problems.length === 0) {
-        console.log(`✔ ${label}: operací ${Object.entries(expectedOperations).map(([slug, addresses]) => `${environmentLabel(slug)} ${addresses.length}`).join(', ')}; žádná cizí adresa; úložiště v pořádku`);
+        const counts = (pick) => Object.entries(expected).map(([slug, addresses]) => `${environmentLabel(slug)} ${pick(addresses).length}`).join(', ');
+        console.log(`✔ ${label}: operací ${counts((addresses) => addresses.operations)}; odkazů v textech ${counts((addresses) => addresses.textLinks)}; žádná cizí adresa; úložiště v pořádku`);
       } else {
         failed = true;
         console.error(`✖ ${label}`);

@@ -23,21 +23,10 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { environmentLabel, environmentValues } from './environments.mjs';
-import { HTTP_METHODS, operations } from './openapi.mjs';
+import { HTTP_METHODS, mapStrings, operations } from './openapi.mjs';
 import { fillPlaceholders } from './placeholders.mjs';
 
 const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * Kopie hodnoty JSON, ve které funkce `map(text, key)` upravila každý řetězec;
- * `key` je klíč, pod kterým řetězec v objektu leží. Klíče objektů zůstanou.
- */
-const mapStrings = (value, map, key) => {
-  if (typeof value === 'string') return map(value, key);
-  if (Array.isArray(value)) return value.map((item) => mapStrings(item, map));
-  if (isObject(value)) return Object.fromEntries(Object.entries(value).map(([name, item]) => [name, mapStrings(item, map, name)]));
-  return value;
-};
 
 /**
  * Sloučí doplněk do cíle podle JSON Merge Patch (RFC 7386): objekty se slučují

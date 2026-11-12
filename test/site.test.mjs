@@ -230,3 +230,53 @@ test('výsledná specifikace každého prostředí projde validací OpenAPI 3.0'
     assert.ok(valid, `${file}: ${JSON.stringify(errors)}`);
   }
 });
+
+// Texty: skutečný obsah složky content/ vložený do specifikací.
+
+/** Všechny řetězce specifikace. */
+const stringsOf = (value) =>
+  typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(stringsOf) : [];
+
+test('úvod začíná nadpisem a prostředí s upozorněním ho má hned pod ním v jazyce verze', async () => {
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const lines = spec.info.description.split('\n');
+    assert.match(lines[0], /^# \S/, `${file}: úvod nezačíná nadpisem`);
+    const notice = environment.notice?.[file.startsWith('en/') ? 'en' : 'cs'];
+    if (notice) assert.deepEqual(lines.slice(1, 5), ['', '> [!WARNING]', `> ${notice}`, ''], file);
+    else assert.ok(!spec.info.description.includes('[!WARNING]'), `${file}: upozornění u prostředí, které žádné nemá`);
+  }
+});
+
+test('ve výsledné specifikaci nezůstal zástupný symbol, odkaz na soubor s textem ani konec řádku z Windows', async () => {
+  for (const [file, spec] of await builtSpecs()) {
+    for (const text of stringsOf(spec)) {
+      assert.doesNotMatch(text, /\{\{\w+\}\}/, `${file}: zástupný symbol`);
+      assert.doesNotMatch(text, /\]\([^)\s]*\.md[)#\s]/, `${file}: odkaz na soubor s textem`);
+      assert.doesNotMatch(text, /\r/, `${file}: konec řádku z Windows`);
+    }
+  }
+});
+
+test('popis číselníku měn ukazuje v příkladu adresu API svého prostředí', async () => {
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const { description } = spec.paths['/codelists/currencies'].get;
+    assert.ok(description.includes(`'${environment.baseUrl}/codelists/currencies`), `${file}: příklad nevolá ${environment.baseUrl}`);
+  }
+});
+
+test('šablona popisu operace existuje v obou jazycích, má jednotnou osnovu a na web se nedostane', async () => {
+  const outline = {
+    cs: ['Kdy ji volat', 'Na co si dát pozor', 'Příklad', 'Časté chyby'],
+    en: ['When to call it', 'What to watch out for', 'Example', 'Common errors'],
+  };
+  for (const [language, sections] of Object.entries(outline)) {
+    const template = await readFile(join(repoRoot, 'content', language, '_sablona-operace.md'), 'utf8');
+    // Popis operace je text pod čarou; první odstavec říká, k čemu operace slouží.
+    const body = template.slice(template.indexOf('\n---\n') + '\n---\n'.length);
+    assert.match(body, /^\n\S/, `${language}: popis nezačíná odstavcem o účelu operace`);
+    assert.deepEqual([...body.matchAll(/^## (.+)$/gm)].map(([, heading]) => heading), sections, language);
+  }
+  for (const [file, spec] of await builtSpecs()) {
+    assert.ok(!stringsOf(spec).some((text) => text.includes('Jak šablonu použít') || text.includes('How to use the template')), file);
+  }
+});

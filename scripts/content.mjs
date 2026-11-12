@@ -1,0 +1,345 @@
+// Texty dokumentace: soubory Markdownu ze složky content/<jazyk>/ build vkládá
+// do specifikace každého prostředí (docs/adr/0001, 0004).
+//
+//   intro/*.md                     kapitoly úvodu, řazené podle názvu souboru
+//   tags/<skupina>.md              text skupiny; technický název skupiny
+//                                  ze specifikace (Products), ne zobrazovaný
+//   operations/<metoda>__<cesta>.md  popis operace; metoda malými písmeny, cesta
+//                                  s podtržítky místo lomítek a s původní
+//                                  velikostí písmen (get__codelists_ProductCategory.md)
+//
+// Kapitola úvodu začíná nadpisem první úrovně (`# Název`); Scalar z nadpisů
+// dělá položky menu a text před prvním nadpisem by přidal položku navíc.
+// Nadpisy úvodu se píší křížky a jsou prostý text bez formátování, jinak by
+// k nim Scalar z menu nedoskočil nebo by odkaz na ně vedl jinam.
+//
+// Hodnoty, které se liší mezi prostředími, se píší zástupnými symboly
+// (`{{baseUrl}}`, `{{tokenUrl}}`, `{{envSlug}}`), i uvnitř ukázek kódu.
+//
+// Odkaz na jiný text se píše jako odkaz na jeho soubor, volitelně s nadpisem
+// za `#` tak, jak ho jako kotvu tvoří GitHub: `[průvodce](../intro/30-pruvodce.md#nadpis)`.
+// Funguje tak i v náhledu na GitHubu a build ho převede na adresu ve Scalaru.
+// Odkaz na nadpis v textu skupiny nebo operace vede na skupinu nebo operaci,
+// jemněji Scalar spolehlivě necílí. Odkaz, který nikam nevede, shodí build.
+//
+// Soubor nebo složka s podtržítkem na začátku názvu (šablona popisu operace)
+// se nečte, stejně jako skryté soubory s tečkou na začátku. Jiný soubor mimo
+// tato tři místa shodí build, stejně jako osiřelý text: text skupiny nebo
+// operace, která není v žádném prostředí.
+
+import { readFile, readdir } from 'node:fs/promises';
+import { basename, join, posix, relative, sep } from 'node:path';
+import { environmentLabel, environmentValues, versionLabel } from './environments.mjs';
+import { headings, linkDefinitions, mapLinks, underlinedHeadings } from './markdown.mjs';
+import { operations } from './openapi.mjs';
+import { fillPlaceholders } from './placeholders.mjs';
+import { groupAddress, headingAddress, operationAddress, slugger, slugify } from './scalar-addresses.mjs';
+
+/** Druhy textů; druh je název složky, ve které soubor leží. */
+const KINDS = ['intro', 'tags', 'operations'];
+
+/** Název souboru (bez přípony) s popisem operace. */
+const operationTextName = (method, path) => `${method}_${path.replaceAll('/', '_')}`;
+
+/**
+ * Text dokumentace načtený ze souboru.
+ * @typedef {object} Text
+ * @property {'intro' | 'tags' | 'operations'} kind
+ * @property {string} name název souboru bez přípony
+ * @property {string} path cesta ve složce jazyka, například `intro/10-uvod.md`
+ * @property {string} where cesta pro hlášení, například `content/cs/intro/10-uvod.md`
+ * @property {string} markdown obsah s konci řádků LF, bez okrajových mezer
+ */
+
+/**
+ * Pokrytí specifikace texty: skupiny v pořadí menu a jejich operace; `described`
+ * říká, jestli mají text. Operace je u své první skupiny, operace bez skupiny
+ * ve skupině s názvem `null`.
+ * @typedef {{name: string | null, described: boolean, operations: {label: string, described: boolean}[]}[]} Coverage
+ */
+
+/**
+ * Načte texty jednoho jazyka seřazené podle cesty. Jazyk bez složky nemá žádné.
+ * @returns {Promise<Text[]>}
+ */
+export async function readTexts(contentDir, language) {
+  const languageDir = join(contentDir, language);
+  let entries;
+  try {
+    entries = await readdir(languageDir, { recursive: true, withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  const paths = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => relative(languageDir, join(entry.parentPath, entry.name)).split(sep))
+    .filter((segments) => !segments.some((segment) => /^[_.]/.test(segment)))
+    .map((segments) => segments.join('/'))
+    .sort();
+  const where = (path) => `${basename(contentDir)}/${language}/${path}`;
+  const stray = paths.filter((path) => !KINDS.some((kind) => new RegExp(`^${kind}/[^/]+\\.md$`).test(path)));
+  if (stray.length > 0) {
+    throw new Error(
+      `Soubory nejsou text úvodu, skupiny ani operace:\n  ${stray.map(where).join('\n  ')}\n` +
+        `Text patří přímo do složky ${KINDS.map((kind) => `${kind}/`).join(', ')} a má příponu .md; pomocný soubor začíná podtržítkem.`,
+    );
+  }
+  return Promise.all(
+    paths.map(async (path) => {
+      const [kind, file] = path.split('/');
+      const markdown = (await readFile(join(languageDir, path), 'utf8')).replace(/\r\n?/g, '\n').trim();
+      return { kind, name: file.slice(0, -'.md'.length), path, where: where(path), markdown };
+    }),
+  );
+}
+
+/**
+ * Formátování v nadpisu: znaky Markdownu, dvojice podtržítek a entity HTML.
+ * Scalar 1.78.1 čte text takového nadpisu pro menu jinak než pro stránku,
+ * takže by položka menu nikam nevedla.
+ */
+const HEADING_FORMATTING = /[`*~[\]<>\\]|_.*_|&#?\w+;/;
+
+/** Chyby v textech, které nezávisí na prostředí: prázdné soubory a kapitoly úvodu, které by rozbily menu. */
+function textProblems(texts) {
+  const problems = [];
+  for (const { kind, where, markdown } of texts) {
+    if (markdown === '') {
+      problems.push(`${where}: soubor je prázdný`);
+      continue;
+    }
+    for (const destination of linkDefinitions(markdown).filter(isTextLink)) {
+      problems.push(`${where}: odkaz ${destination} je zapsaný definicí pod čarou; odkaz na text pište jako [text](soubor.md)`);
+    }
+    if (kind !== 'intro') continue;
+    if (!/^# +\S/.test(markdown)) problems.push(`${where}: kapitola úvodu musí začínat nadpisem první úrovně, například „# Název kapitoly“`);
+    for (const heading of headings(markdown)) {
+      if (HEADING_FORMATTING.test(heading.text)) {
+        problems.push(
+          `${where}: nadpis „${heading.text}“ musí být prostý text bez formátování (znaky \` * ~ [ ] < > \\, dvojice podtržítek, entity jako &amp;), jinak k němu Scalar z menu nedoskočí`,
+        );
+      }
+    }
+    // Scalar takový nadpis čísluje s ostatními, build ho nečte; adresy opakovaných nadpisů by se rozešly.
+    for (const heading of underlinedHeadings(markdown)) {
+      problems.push(`${where}: „${heading}“ je nadpis zapsaný podtržením; nadpis pište křížky (## Nadpis) a vodorovnou čáru oddělte prázdným řádkem`);
+    }
+  }
+  return problems;
+}
+
+/** Cíl odkazu rozdělený na cestu k souboru a nadpis za `#`; kódování z adresy je pryč. */
+function parseDestination(destination) {
+  const decode = (part) => {
+    try {
+      return decodeURIComponent(part);
+    } catch {
+      return part;
+    }
+  };
+  const hash = destination.indexOf('#');
+  return hash === -1 ? { file: decode(destination), fragment: null } : { file: decode(destination.slice(0, hash)), fragment: decode(destination.slice(hash + 1)) };
+}
+
+/**
+ * Odkaz na text: na soubor `.md` nebo na nadpis v témže souboru (`#nadpis`).
+ * Odkazy na web (`https:`, `mailto:`) a na jiné soubory build nechává být.
+ */
+const isTextLink = (destination) => !/^[a-z][a-z0-9+.-]*:/i.test(destination) && /^(#|[^#]*\.md(#|$))/i.test(destination);
+
+/**
+ * Najde, kam odkaz z textu `source` vede.
+ * @param {Text} source
+ * @param {Map<string, Text>} textsByPath
+ * @returns {{target: Text, headingIndex: number | null} | {problem: string}}
+ *   `headingIndex` je pořadí nadpisu v cílovém textu, `null` u odkazu na celý text
+ */
+function resolveLink(source, destination, textsByPath) {
+  const { file, fragment } = parseDestination(destination);
+  const target = file === '' ? source : textsByPath.get(posix.normalize(posix.join(posix.dirname(source.path), file)));
+  if (!target) return { problem: `${source.where}: odkaz ${destination} vede na soubor, který mezi texty tohoto jazyka není` };
+  if (!fragment) return { target, headingIndex: null };
+  // Kotvy na GitHubu a adresy ve Scalaru se liší jen v pomlčkách a podtržítkách; `slugify` je sjednotí.
+  const nextSlug = slugger();
+  const anchors = headings(target.markdown).map(({ text }) => nextSlug(text));
+  const headingIndex = anchors.indexOf(slugify(fragment));
+  if (headingIndex === -1) {
+    const available = anchors.length > 0 ? `; nadpisy v souboru: ${anchors.map((anchor) => `#${anchor}`).join(', ')}` : '; soubor žádné nadpisy nemá';
+    return { problem: `${source.where}: odkaz ${destination} vede na nadpis, který v ${target.where} není${available}` };
+  }
+  return { target, headingIndex };
+}
+
+/**
+ * Úvod s upozorněním prostředí hned pod prvním nadpisem. Před nadpis nepatří:
+ * text před prvním nadpisem by ve Scalaru přidal do menu položku navíc.
+ */
+function withNotice(intro, environment, language) {
+  if (!environment.notice) return intro;
+  const notice = environment.notice[language];
+  if (!notice) throw new Error(`${environmentLabel(environment.slug)}: upozornění (notice) nemá znění pro jazyk ${language}`);
+  // Zápis upozornění z GitHubu; Scalar ho vykreslí jako výrazný rámeček.
+  const block = `> [!WARNING]\n> ${notice}`;
+  if (!intro) return block;
+  const [heading, ...rest] = intro.split('\n');
+  return [heading, '', block, ...rest].join('\n');
+}
+
+/** Položka skupiny ve specifikaci; skupinu, kterou specifikace sama neuvádí, zařadí Scalar za uvedené. */
+function tagEntry(spec, name) {
+  spec.tags ??= [];
+  let tag = spec.tags.find((candidate) => candidate.name === name);
+  if (!tag) spec.tags.push((tag = { name }));
+  return tag;
+}
+
+/**
+ * @param {object} spec
+ * @param {{groups: Set<string>, operations: Set<object>}} described skupiny (názvem) a operace (objektem ze `spec`), které mají text
+ * @returns {Coverage}
+ */
+function coverageOf(spec, described) {
+  const all = [...operations(spec)];
+  const byFirstGroup = Map.groupBy(all, ({ operation }) => operation.tags?.[0] ?? null);
+  const groups = new Set(all.flatMap(({ operation }) => operation.tags ?? []));
+  // Pořadí jako v menu: nejdřív skupiny, které specifikace uvádí, pak ostatní.
+  const order = [...new Set([...(spec.tags ?? []).map((tag) => tag.name).filter((name) => groups.has(name)), ...groups]), ...(byFirstGroup.has(null) ? [null] : [])];
+  return order.map((group) => ({
+    name: group,
+    described: described.groups.has(group),
+    operations: (byFirstGroup.get(group) ?? []).map(({ method, path, operation }) => ({
+      label: `${method.toUpperCase()} ${path}`,
+      described: described.operations.has(operation),
+    })),
+  }));
+}
+
+/**
+ * Místo textu ve specifikaci jednoho prostředí.
+ * @typedef {object} Place
+ * @property {(headingIndex: number | null) => string} address adresa textu, nebo jeho nadpisu, ve Scalaru
+ * @property {(markdown: string) => void} insert vloží text připravený pro prostředí
+ */
+
+/**
+ * Vloží texty jednoho jazyka do specifikací všech prostředí: úvod do
+ * `info.description`, text skupiny do `tags[].description` a popis operace
+ * do jejího `description`. Odkazy mezi texty převede na adresy ve Scalaru
+ * a zástupné symboly nahradí hodnotami prostředí.
+ *
+ * Text skupiny nebo operace, která v prostředí není, se tam nevloží (nová
+ * operace se obvykle objeví nejdřív v TEST, docs/adr/0004) a z odkazu na něj
+ * tam zůstane jen text. Osiřelý text, tedy text bez skupiny nebo operace ve
+ * všech prostředích, je chyba: operace se nejspíš přejmenovala nebo zmizela.
+ * Chyba je i odkaz, který nevede na žádný text nebo nadpis.
+ *
+ * Prostředí s upozorněním (`notice`, znění pro každý jazyk) ho má hned pod
+ * prvním nadpisem úvodu.
+ *
+ * @param {object} options
+ * @param {Map<string, object>} options.specs specifikace podle `slug` prostředí
+ * @param {{slug: string, baseUrl: string, tokenUrl: string, notice?: Record<string, string>}[]} options.environments
+ * @param {Text[]} options.texts
+ * @param {string} options.language jazyk textů, například `cs`
+ * @param {{info: (message: string) => void}} options.log
+ * @returns {{specs: Map<string, object>, coverage: Map<string, Coverage>}}
+ *   nové specifikace a pokrytí texty, obojí podle `slug` prostředí; vstupní
+ *   specifikace zůstanou beze změny
+ */
+export function insertTexts({ specs, environments, texts, language, log }) {
+  const problems = new Set(textProblems(texts));
+  const textsByPath = new Map(texts.map((text) => [text.path, text]));
+  // Scalar čísluje opakované nadpisy přes celý úvod, ne po kapitolách.
+  const nextIntroSlug = slugger();
+  const introSlugs = new Map(
+    texts.filter(({ kind }) => kind === 'intro').map((text) => [text, headings(text.markdown).map((heading) => nextIntroSlug(heading.text))]),
+  );
+
+  const result = new Map();
+  const coverage = new Map();
+  /** Texty skupin a operací, které sedí aspoň na jedno prostředí. */
+  const matched = new Set();
+  /** Názvy textů, které by na některou skupinu nebo operaci seděly, podle druhu. */
+  const expectedNames = { tags: new Set(), operations: new Set() };
+  for (const environment of environments) {
+    const { slug } = environment;
+    const spec = structuredClone(specs.get(slug));
+    const operationsByName = Map.groupBy(operations(spec), ({ method, path }) => operationTextName(method, path));
+    const groups = new Set([...operations(spec)].flatMap(({ operation }) => operation.tags ?? []));
+    for (const name of groups) expectedNames.tags.add(name);
+    for (const name of operationsByName.keys()) expectedNames.operations.add(name);
+
+    const intro = [];
+    const described = { groups: new Set(), operations: new Set() };
+    /** Texty, které do prostředí patří. @type {Map<Text, Place>} */
+    const places = new Map();
+    for (const text of texts) {
+      const { kind, name } = text;
+      if (kind === 'intro') {
+        places.set(text, {
+          address: (headingIndex) => headingAddress(slug, introSlugs.get(text)[headingIndex ?? 0]),
+          insert: (markdown) => intro.push(markdown),
+        });
+      } else if (kind === 'tags' && groups.has(name)) {
+        matched.add(text);
+        described.groups.add(name);
+        // Na nadpis v textu skupiny ani operace Scalar spolehlivě necílí; adresa je vždy celá skupina nebo operace.
+        places.set(text, { address: () => groupAddress(slug, name), insert: (markdown) => (tagEntry(spec, name).description = markdown) });
+      } else if (kind === 'operations' && operationsByName.has(name)) {
+        matched.add(text);
+        const candidates = operationsByName.get(name);
+        if (candidates.length > 1) {
+          // Lomítko i podtržítko v cestě dají v názvu souboru podtržítko.
+          const list = candidates.map(({ method, path }) => `${method.toUpperCase()} ${path}`).join(' a ');
+          problems.add(`${text.where}: název souboru odpovídá více operacím (${list}), popis nejde přiřadit`);
+          continue;
+        }
+        const [{ method, path, operation }] = candidates;
+        described.operations.add(operation);
+        places.set(text, {
+          address: () => operationAddress(slug, operation.tags?.[0], method, path),
+          insert: (markdown) => (operation.description = markdown),
+        });
+      }
+    }
+
+    const values = environmentValues(environment);
+    for (const [text, place] of places) {
+      const linked = mapLinks(text.markdown, (destination) => {
+        if (!isTextLink(destination)) return undefined;
+        const resolved = resolveLink(text, destination, textsByPath);
+        if (resolved.problem) {
+          problems.add(resolved.problem);
+          return undefined;
+        }
+        const target = places.get(resolved.target);
+        if (!target) {
+          log.info(`${versionLabel(language, slug)}: ${text.where}: odkaz ${destination} vede na text, který v prostředí není; zůstal jen text bez odkazu`);
+          return null;
+        }
+        return target.address(resolved.headingIndex);
+      });
+      place.insert(fillPlaceholders(linked, values, text.where));
+    }
+    const description = withNotice(intro.join('\n\n'), environment, language);
+    if (description) spec.info.description = description;
+    result.set(slug, spec);
+    coverage.set(slug, coverageOf(spec, described));
+  }
+
+  const orphans = texts.filter((text) => text.kind !== 'intro' && !matched.has(text));
+  const describeOrphan = ({ kind, name, where }) => {
+    // Nejčastější příčina je velikost písmen; názvy se párují přesně.
+    const similar = [...expectedNames[kind]].find((expected) => expected.toLowerCase() === name.toLowerCase());
+    return similar ? `${where} (liší se jen velikostí písmen od ${similar}.md)` : where;
+  };
+  const errors = [
+    ...(orphans.length > 0
+      ? [`Osiřelé texty: skupina nebo operace není v žádném prostředí (přejmenovala se nebo zmizela):\n  ${orphans.map(describeOrphan).join('\n  ')}`]
+      : []),
+    ...(problems.size > 0 ? [`Chyby v textech:\n  ${[...problems].join('\n  ')}`] : []),
+  ];
+  if (errors.length > 0) throw new Error(errors.join('\n'));
+  return { specs: result, coverage };
+}
