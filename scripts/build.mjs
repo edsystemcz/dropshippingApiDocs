@@ -110,6 +110,8 @@ const siteAssets = (repoRoot) => {
     { from: join(repoRoot, 'node_modules/@scalar/api-reference/dist/browser/standalone.js'), to: 'assets/scalar/standalone.js' },
     { from: join(repoRoot, 'site/assets/favicon.svg'), to: 'assets/favicon.svg' },
     { from: join(repoRoot, 'site/fonts.css'), to: 'assets/fonts/fonts.css' },
+    // Vlastní výřez Interu se symboly kláves, viz site/fonts.css.
+    { from: join(repoRoot, 'site/assets/inter-symbols.woff2'), to: 'assets/fonts/inter-symbols.woff2' },
     ...['latin', 'latin-ext'].flatMap((subset) => [
       { from: join(inter, `files/inter-${subset}-wght-normal.woff2`), to: `assets/fonts/inter-${subset}-wght-normal.woff2` },
       { from: join(inter, `files/inter-${subset}-wght-italic.woff2`), to: `assets/fonts/inter-${subset}-wght-italic.woff2` },

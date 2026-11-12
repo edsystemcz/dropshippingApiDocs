@@ -36,6 +36,7 @@ test('výstup obsahuje právě vyjmenované soubory', async () => {
     'assets/fonts/inter-latin-ext-wght-normal.woff2',
     'assets/fonts/inter-latin-wght-italic.woff2',
     'assets/fonts/inter-latin-wght-normal.woff2',
+    'assets/fonts/inter-symbols.woff2',
     'assets/fonts/jetbrains-mono-latin-ext-wght-normal.woff2',
     'assets/fonts/jetbrains-mono-latin-wght-normal.woff2',
     'assets/scalar/standalone.js',
@@ -116,4 +117,13 @@ test('stránka předává Scalaru prostředí z environments.json, PROD jako vý
 test('stránky mají ikonu z přibalených souborů', async () => {
   assert.match(await read('index.html'), /<link rel="icon" type="image\/svg\+xml" href="assets\/favicon\.svg">/);
   assert.match(await read('en/index.html'), /<link rel="icon" type="image\/svg\+xml" href="\.\.\/assets\/favicon\.svg">/);
+});
+
+test('Inter pokrývá symboly kláves, které Scalar ukazuje u klávesových zkratek', async () => {
+  const ranges = (await fontFaces()).filter((face) => face.family === 'Inter').flatMap((face) => face.ranges);
+
+  for (const symbol of '←↑→↓↵⇧⇪⌘⌥⌃') {
+    const code = symbol.codePointAt(0);
+    assert.ok(ranges.some(([from, to]) => from <= code && code <= to), `Inter nepokrývá „${symbol}“`);
+  }
 });
