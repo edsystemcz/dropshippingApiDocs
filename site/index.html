@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="{{lang}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{pageTitle}}</title>
+    <link rel="stylesheet" href="{{rootPath}}assets/fonts/fonts.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="{{rootPath}}assets/scalar/standalone.js"></script>
+    <script>
+      // Nastavení ověřené na verzi Scalaru 1.78.1. Stránka nesmí volat žádnou
+      // cizí doménu (docs/adr/0002) a do úložiště prohlížeče smí zapsat jen
+      // barevný režim a jazyk ukázek kódu, na tom stojí zásady ochrany
+      // osobních údajů. Po změně nastavení nebo verze Scalaru obojí ověř znovu.
+      Scalar.createApiReference('#app', {
+        sources: {{sources}},
+        // Písma jsou přibalená (assets/fonts), z CDN Scalaru se nenačítají.
+        withDefaultFonts: false,
+        // Volání API z prohlížeče bez CORS nefunguje (docs/adr/0003).
+        hideTestRequestButton: true,
+        // Vede na cizí web client.scalar.com.
+        hideClientButton: true,
+        // Funkce, které volají servery Scalaru.
+        showDeveloperTools: 'never',
+        agent: { disabled: true },
+        telemetry: false,
+        // Záměrně chybí: proxyUrl (proxy by posílala tokeny přes cizí server),
+        // mcp a defaultHttpClient (zapsal by do úložiště hned při načtení).
+      });
+    </script>
+  </body>
+</html>

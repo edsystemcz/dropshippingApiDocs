@@ -7,6 +7,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildNumber, sourceSpecPath } from './source-spec.mjs';
 
 const TIMEOUT_MS = 30_000;
 
@@ -15,9 +16,6 @@ const readIfExists = (path) =>
     if (error.code === 'ENOENT') return null;
     throw error;
   });
-
-/** Číslo buildu je jen v titulku specifikace: „…, build: 1.1.122“. */
-const buildNumber = (spec) => /build:\s*(\d+(?:\.\d+)*)/.exec(spec.info.title ?? '')?.[1] ?? null;
 
 const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -57,7 +55,7 @@ export async function fetchSpecs({ environments, specDir, fetchImpl = fetch, log
   const results = [];
   for (const { slug, specUrl } of environments) {
     const label = slug.toUpperCase();
-    const path = join(specDir, `swagger.${slug}.source.json`);
+    const path = sourceSpecPath(specDir, slug);
 
     let downloaded;
     try {
