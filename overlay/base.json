@@ -1,0 +1,44 @@
+{
+  "schemaNames": {
+    "Elinkx.Dropship.Api.Web.Models.Codelist.ProductUnitModel": "CodelistProductUnitModel"
+  },
+  "servers": [
+    { "url": "{{baseUrl}}" }
+  ],
+  "tags": [
+    { "name": "Info", "x-displayName": "Stav služby" },
+    { "name": "Codelist", "x-displayName": "Číselníky" },
+    { "name": "Products", "x-displayName": "Katalog produktů" },
+    { "name": "OrdersB2C", "x-displayName": "Objednávky B2C" },
+    { "name": "OrdersB2B", "x-displayName": "Objednávky B2B" }
+  ],
+  "paths": {
+    "/Info": {
+      "get": { "summary": "Vrátí stav a verzi služby." }
+    },
+    "/codelists/ProductIndex": {
+      "get": { "summary": "Číselník produktových indexů." }
+    },
+    "/codelists/ProductBindingsType": {
+      "get": { "summary": "Číselník typů příslušenství/náhrad." }
+    },
+    "/products/catalog": {
+      "post": { "summary": "Generování dropship katalogu produktů asynchronně." }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddressExternalModel": {
+        "properties": {
+          "city": { "description": "Město." },
+          "zipCode": { "description": "PSČ." }
+        }
+      }
+    },
+    "securitySchemes": {
+      "oauth2": {
+        "description": "Přístupový token OAuth 2.0 typu Bearer. Vydává ho token endpoint `{{tokenUrl}}`; jak token získat a obnovit, popisuje kapitola Autentizace."
+      }
+    }
+  }
+}

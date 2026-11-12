@@ -1,0 +1,55 @@
+{
+  "paths": {
+    "/products/catalog": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": { "$ref": null, "type": "array", "items": { "$ref": "#/components/schemas/ProductCatalogModel" } }
+              },
+              "application/json": {
+                "schema": { "$ref": null, "type": "array", "items": { "$ref": "#/components/schemas/ProductCatalogModel" } }
+              },
+              "text/json": {
+                "schema": { "$ref": null, "type": "array", "items": { "$ref": "#/components/schemas/ProductCatalogModel" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "newPaths": {
+    "/files/{fileName}": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Stažení katalogového souboru.",
+        "parameters": [
+          {
+            "name": "fileName",
+            "in": "path",
+            "required": true,
+            "description": "Název souboru přesně tak, jak ho vrátilo zjištění stavu jobu (`GET /products/catalog`) v poli `fileName`.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Katalogový soubor: ZIP s právě jedním XML souborem v kódování UTF-8.",
+            "content": {
+              "application/zip": { "schema": { "type": "string", "format": "binary" } },
+              "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "400": { "description": "Neplatný požadavek." },
+          "401": { "description": "Token chybí, je neplatný nebo vypršel." },
+          "403": { "description": "Neplatné volání, například chybí název souboru." },
+          "404": { "description": "Soubor nebyl nalezen, například kvůli chybnému názvu nebo vypršení platnosti." },
+          "500": { "description": "Interní chyba serveru." },
+          "503": { "description": "Služba je dočasně nedostupná." }
+        }
+      }
+    }
+  }
+}

@@ -1,30 +1,36 @@
-// Sestaví web ze zdrojových specifikací: pro každý jazyk a každé prostředí
-// zapíše specifikaci a stránku se Scalarem do dist/ (docs/adr/0001, 0004).
+// Sestaví web ze zdrojových specifikací a overlay: pro každý jazyk a každé
+// prostředí zapíše specifikaci a stránku se Scalarem do dist/ (docs/adr/0001, 0004).
 
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Validator } from '@seriousme/openapi-schema-validator';
+import { operations } from './openapi.mjs';
+import { applyOverlays, readOverlays } from './overlay.mjs';
+import { fillPlaceholders } from './placeholders.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
-
-const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
-
-/** Operace je kombinace metody a cesty; ostatní klíče cesty (parameters, summary) se nepočítají. */
-const countOperations = (spec) =>
-  Object.values(spec.paths).reduce((count, path) => count + HTTP_METHODS.filter((method) => method in path).length, 0);
 
 /**
  * Titulek je název prostředí; číslo buildu API se z původního titulku stěhuje
  * do verze. Když v titulku není, zůstane verze ze zdroje a build jen varuje.
  */
-function specForEnvironment(source, environment, log) {
-  const label = environment.slug.toUpperCase();
-  const apiBuild = buildNumber(source);
-  if (apiBuild) {
-    log.info(`${label}: build ${apiBuild}, operací: ${countOperations(source)}`);
-  } else {
-    log.warn(`${label}: číslo buildu se z titulku nepodařilo vyčíst, verze zůstává ${source.info.version}`);
+function specForEnvironment(source, environment, apiBuild, log) {
+  if (!apiBuild) {
+    log.warn(`${environment.slug.toUpperCase()}: číslo buildu se z titulku nepodařilo vyčíst, verze zůstává ${source.info.version}`);
   }
   return { ...source, info: { ...source.info, title: environment.title, version: apiBuild ?? source.info.version } };
+}
+
+/**
+ * Výsledná specifikace musí projít validací OpenAPI ve verzi, kterou uvádí
+ * (zdroj je 3.0.1). Validátor ověří i to, že každý `$ref` někam vede.
+ */
+async function assertValidOpenApi(validator, spec, label) {
+  const { valid, errors } = await validator.validate(spec);
+  if (valid) return;
+  // Odkaz, který nikam nevede, hlásí validátor jedním řetězcem, ostatní chyby polem.
+  const details = typeof errors === 'string' ? [errors] : errors.map(({ instancePath, message }) => `${instancePath || '/'}: ${message}`);
+  throw new Error(`${label}: výsledná specifikace neprošla validací OpenAPI ${spec.openapi}:\n  ${[...new Set(details)].slice(0, 10).join('\n  ')}`);
 }
 
 /** Název specifikace prostředí ve výstupu; stránka na ni odkazuje relativně. */
@@ -38,13 +44,6 @@ const LANGUAGES = [
   { code: 'cs', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system' },
   { code: 'en', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system' },
 ];
-
-/** Vyplní zástupné symboly {{název}} v šabloně stránky; neznámý symbol je chyba. */
-const fillTemplate = (template, values) =>
-  template.replace(/\{\{(\w+)\}\}/g, (symbol, name) => {
-    if (!Object.hasOwn(values, name)) throw new Error(`šablona stránky obsahuje neznámý zástupný symbol ${symbol}`);
-    return values[name];
-  });
 
 /** JSON pro vložení do <script>: znak < se zapíše únikově, aby text nemohl značku ukončit. */
 const scriptJson = (value) => JSON.stringify(value).replaceAll('<', '\\u003c');
@@ -62,29 +61,50 @@ const scalarSources = (environments) =>
  * Výstup vzniká celý znovu: obsahuje jen specifikace, stránky a soubory
  * vyjmenované v `assets`, nic z minulého buildu ani nic dalšího ze zdrojů.
  *
+ * Specifikace prostředí vzniká ze zdrojové specifikace a doplňků z overlay
+ * (scripts/overlay.mjs) a musí projít validací OpenAPI. Chyba v doplňcích
+ * nebo ve validaci shodí build dřív, než se sáhne na výstup.
+ *
  * Šablona stránky `index.html` v `siteDir` smí obsahovat tyto zástupné symboly:
  * `{{lang}}` (jazyk verze), `{{pageTitle}}` (titulek stránky), `{{rootPath}}`
  * (cesta ke společným souborům) a `{{sources}}` (prostředí pro přepínač Scalaru).
  *
  * @param {object} options
- * @param {{slug: string, title: string, default?: boolean}[]} options.environments
+ * @param {{slug: string, title: string, default?: boolean, baseUrl: string, tokenUrl: string}[]} options.environments
  * @param {string} options.specDir složka se zdrojovými specifikacemi
+ * @param {string} options.overlayDir složka s doplňky (`*.json`)
  * @param {string} options.siteDir složka se šablonou stránky
  * @param {string} options.outDir výstupní složka; build ji před zápisem smaže
  * @param {{from: string, to: string}[]} options.assets společné soubory: odkud a kam ve výstupu
  * @param {{info: (message: string) => void, warn: (message: string) => void}} [options.log]
  */
-export async function build({ environments, specDir, siteDir, outDir, assets, log = console }) {
+export async function build({ environments, specDir, overlayDir, siteDir, outDir, assets, log = console }) {
   const template = await readFile(join(siteDir, 'index.html'), 'utf8');
   const sources = scriptJson(scalarSources(environments));
-  const files = new Map();
+  const overlays = await readOverlays(overlayDir);
+  const titled = new Map();
+  const apiBuilds = new Map();
   for (const environment of environments) {
     const source = JSON.parse(await readFile(sourceSpecPath(specDir, environment.slug), 'utf8'));
-    const spec = JSON.stringify(specForEnvironment(source, environment, log), null, 2);
-    for (const language of LANGUAGES) files.set(join(language.dir, specFileName(environment.slug)), spec);
+    apiBuilds.set(environment.slug, buildNumber(source));
+    titled.set(environment.slug, specForEnvironment(source, environment, apiBuilds.get(environment.slug), log));
+  }
+  const specs = applyOverlays({ specs: titled, environments, overlays, log });
+  const validator = new Validator();
+  for (const [slug, spec] of specs) {
+    const label = slug.toUpperCase();
+    await assertValidOpenApi(validator, spec, label);
+    // Počítá se výsledná specifikace: na webu jsou i operace doplněné z overlay.
+    const apiBuild = apiBuilds.get(slug);
+    log.info(`${label}: ${apiBuild ? `build ${apiBuild}, ` : ''}operací: ${[...operations(spec)].length}`);
+  }
+  const files = new Map();
+  for (const [slug, spec] of specs) {
+    const content = JSON.stringify(spec, null, 2);
+    for (const language of LANGUAGES) files.set(join(language.dir, specFileName(slug)), content);
   }
   for (const { code, dir, rootPath, pageTitle } of LANGUAGES) {
-    files.set(join(dir, 'index.html'), fillTemplate(template, { lang: code, pageTitle, rootPath, sources }));
+    files.set(join(dir, 'index.html'), fillPlaceholders(template, { lang: code, pageTitle, rootPath, sources }, 'šablona stránky'));
   }
   for (const { from, to } of assets) files.set(to, await readFile(from));
 
@@ -127,6 +147,7 @@ const siteAssets = (repoRoot) => {
 export const siteInputs = async (repoRoot) => ({
   environments: JSON.parse(await readFile(join(repoRoot, 'environments.json'), 'utf8')),
   specDir: join(repoRoot, 'spec'),
+  overlayDir: join(repoRoot, 'overlay'),
   siteDir: join(repoRoot, 'site'),
   assets: siteAssets(repoRoot),
 });
