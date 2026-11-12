@@ -33,7 +33,8 @@
  * v rozhraní Scalaru. Sady latin a latin-ext je neobsahují, proto je soubor
  * site/assets/inter-symbols.woff2 vlastní výřez z písma Inter 4.1
  * (InterVariable.woff2 z repozitáře rsms/inter na GitHubu, licence OFL),
- * vytvořený nástrojem subset-font. Při změně verze písma ho vyrob znovu.
+ * vytvořený nástrojem subset-font. Soubor je v repu hotový a na verzi
+ * ostatních sad nezávisí; znovu se vyrábí jen kvůli dalším symbolům.
  */
 @font-face {
   font-family: 'Inter';
