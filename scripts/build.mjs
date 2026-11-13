@@ -98,27 +98,28 @@ const specFileName = (slug) => `openapi.${slug}.json`;
 /**
  * Jazykové verze webu: čeština v kořeni výstupu, angličtina ve složce en/.
  * `rootPath` je cesta ze stránky ke kořeni výstupu, kde leží společné soubory.
- * `label` je zkratka v přepínači jazyka, `switchLabel` jeho popisek pro čtečky.
+ * `label` je zkratka v přepínači jazyka, `switchLabel` jeho popisek pro čtečky,
+ * `themeLabel` popisek tlačítka barevného režimu (stisknuté = tmavý režim).
  */
 const LANGUAGES = [
   // Češtinu Scalar vestavěnou nemá; rozhraní dostane překlad ze slovníku.
-  { code: 'cs', label: 'CZ', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system', switchLabel: 'Jazyk', scalarTranslations: 'scalar.cs.json' },
+  { code: 'cs', label: 'CZ', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system', switchLabel: 'Jazyk', themeLabel: 'Tmavý režim', scalarTranslations: 'scalar.cs.json' },
   // Specifikace je česky; anglická verze ji překládá podle slovníku.
-  { code: 'en', label: 'EN', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system', switchLabel: 'Language', dictionary: 'en.json' },
+  { code: 'en', label: 'EN', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system', switchLabel: 'Language', themeLabel: 'Dark mode', dictionary: 'en.json' },
 ];
 
 /**
- * Přepínač jazyka do záhlaví: zvolený jazyk jako aktuální, ostatní jako
- * relativní odkaz na jejich verzi. Odkazy nesou `data-language-switch`;
- * skript stránky k nim před přechodem doplní místo v referenci a prostředí.
+ * Přepínač jazyka: zvolený jazyk jako aktuální, ostatní jako relativní odkaz
+ * na jejich verzi. Odkaz nese adresu verze i v `data-language-switch`; skript
+ * stránky k ní před přechodem doplní místo v referenci a prostředí.
  */
 const languageSwitch = (current) => {
   const items = LANGUAGES.map((language) => {
     if (language === current) return `<span lang="${language.code}" aria-current="true">${language.label}</span>`;
     const href = `${current.rootPath}${language.dir ? `${language.dir}/` : ''}` || './';
-    return `<a href="${href}" hreflang="${language.code}" lang="${language.code}" data-language-switch>${language.label}</a>`;
+    return `<a href="${href}" hreflang="${language.code}" lang="${language.code}" data-language-switch="${href}">${language.label}</a>`;
   });
-  return `<nav class="site-languages" aria-label="${current.switchLabel}">${items.join(' <span aria-hidden="true">|</span> ')}</nav>`;
+  return `<nav class="site-languages" aria-label="${current.switchLabel}">${items.join('')}</nav>`;
 };
 
 /** JSON pro vložení do <script>: znak < se zapíše únikově, aby text nemohl značku ukončit. */
@@ -169,9 +170,11 @@ const THEME_FILE = 'assets/theme.css';
  * Šablona stránky `index.html` v `siteDir` smí obsahovat tyto zástupné symboly:
  * `{{lang}}` (jazyk verze), `{{pageTitle}}` (titulek stránky), `{{rootPath}}`
  * (cesta ke společným souborům), `{{sources}}` (prostředí pro přepínač Scalaru),
- * `{{logo}}` (logo jako inline SVG), `{{themeStyles}}` (odkaz na motiv,
- * nebo nic), `{{localization}}` (jazyk a překlad rozhraní pro volbu
- * `localization` Scalaru) a `{{languageSwitch}}` (přepínač jazyka CZ | EN).
+ * `{{logo}}` a `{{logoSymbol}}` (logo a jeho značka bez textu pro mobil jako
+ * inline SVG), `{{themeStyles}}` (odkaz na motiv, nebo nic), `{{themeLabel}}`
+ * (popisek tlačítka barevného režimu), `{{localization}}` (jazyk a překlad
+ * rozhraní pro volbu `localization` Scalaru) a `{{languageSwitch}}`
+ * (přepínač jazyka CZ a EN).
  *
  * Motiv je nepovinný: když ho build dostane, zkopíruje ho do `assets/theme.css`
  * a stránky na něj odkazují. Bez něj má web výchozí vzhled Scalaru.
@@ -188,12 +191,14 @@ const THEME_FILE = 'assets/theme.css';
  * @param {string} options.outDir výstupní složka; build ji před zápisem smaže
  * @param {{from: string, to: string}[]} options.assets společné soubory: odkud a kam ve výstupu
  * @param {string} options.logo soubor s logem (SVG)
+ * @param {string} options.logoSymbol soubor se značkou loga bez textu pro mobil (SVG)
  * @param {string} [options.theme] soubor s motivem (CSS)
  * @param {{info: (message: string) => void, warn: (message: string) => void}} [options.log]
  */
-export async function build({ environments, specDir, overlayDir, contentDir, siteDir, i18nDir, outDir, assets, logo: logoPath, theme: themePath, log = console }) {
+export async function build({ environments, specDir, overlayDir, contentDir, siteDir, i18nDir, outDir, assets, logo: logoPath, logoSymbol: logoSymbolPath, theme: themePath, log = console }) {
   const template = await readFile(join(siteDir, 'index.html'), 'utf8');
   const logo = inlineSvg(await readFile(logoPath, 'utf8'));
+  const logoSymbol = inlineSvg(await readFile(logoSymbolPath, 'utf8'));
   const theme = themePath === undefined ? null : await readFile(themePath);
   const sources = scriptJson(scalarSources(environments));
   const overlays = await readOverlays(overlayDir);
@@ -237,10 +242,10 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
   }
   if (theme !== null) files.set(THEME_FILE, theme);
   for (const language of LANGUAGES) {
-    const { code, dir, rootPath, pageTitle, scalarTranslations } = language;
+    const { code, dir, rootPath, pageTitle, themeLabel, scalarTranslations } = language;
     const themeStyles = theme === null ? '' : `<link rel="stylesheet" href="${rootPath}${THEME_FILE}">`;
     const localization = scriptJson(scalarTranslations ? { locale: code, translations: await readScalarTranslations(join(i18nDir, scalarTranslations)) } : { locale: code });
-    const values = { lang: code, pageTitle, rootPath, sources, logo, themeStyles, localization, languageSwitch: languageSwitch(language) };
+    const values = { lang: code, pageTitle, rootPath, sources, logo, logoSymbol, themeStyles, themeLabel, localization, languageSwitch: languageSwitch(language) };
     files.set(join(dir, 'index.html'), fillPlaceholders(template, values, 'šablona stránky'));
   }
   for (const { from, to } of assets) files.set(to, await readFile(from));
@@ -299,6 +304,7 @@ export const siteInputs = async (repoRoot) => {
     i18nDir: join(repoRoot, 'i18n'),
     assets: siteAssets(repoRoot),
     logo: join(repoRoot, 'site/assets/logo.svg'),
+    logoSymbol: join(repoRoot, 'site/assets/logo-symbol.svg'),
     ...(existsSync(theme) && { theme }),
   };
 };

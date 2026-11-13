@@ -17,6 +17,8 @@
 //     ním, na počítači i na mobilu (tam je logo vpravo na řádku s tlačítkem
 //     menu a název oddílu před ním zůstává vidět celý);
 //     logo vede na úvod zvoleného prostředí,
+//   - tlačítko barevného režimu a přepínač jazyka jsou na počítači v záhlaví
+//     a na mobilu v menu; na mobilu je v liště jen značka loga,
 //   - přepnutí režimu bez načtení stránky změní motiv i barvu textu loga,
 //   - text v barvě akcentu, v zelené a v barvách syntaxe ukázek
 //     kódu má kontrast aspoň 4,5:1 na pozadí, na kterém je, v obou režimech,
@@ -325,6 +327,8 @@ const STYLED_CODE_IN_LINKS = `[...document.querySelectorAll('a code')].filter((c
 const TARGET_TOP = `document.getElementById(decodeURIComponent(location.hash.slice(1)))?.getBoundingClientRect().top ?? null`;
 /** Výraz pro prohlížeč: vrací, jestli číslo `topExpression` (horní okraj) leží pod záhlavím a lištami. */
 const belowTopBars = (topExpression) => `((${topExpression}) >= ${TOP_BARS_BOTTOM} - 1)`;
+/** Tlačítko barevného režimu v záhlaví. */
+const HEADER_THEME_BUTTON = `document.querySelector('.site-header [data-theme-toggle]')`;
 /** Barevný režim, barva textu loga a pozadí stránky. */
 const COLOR_STATE = `({
   mode: ['light-mode', 'dark-mode'].find((mode) => document.body.classList.contains(mode)),
@@ -444,10 +448,13 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     expect((await page.evaluate(`document.querySelector('h1').textContent.trim()`)) === defaultEnvironment.title, 'titulek není název výchozího prostředí');
     expect(same(await page.evaluate(STORAGE), EMPTY_STORAGE), `úložiště není po načtení prázdné: ${JSON.stringify(await page.evaluate(STORAGE))}`);
 
-    // Záhlaví: menu začíná pod ním a nezakrývá logo ani přepínač režimu.
+    // Záhlaví: menu začíná pod ním; logo a oba přepínače jsou v něm vidět.
+    // Přepínač režimu Scalaru v menu je skrytý, přepíná ho tlačítko v záhlaví.
     expect(await page.evaluate(belowTopBars(`document.querySelector('aside').getBoundingClientRect().top`)), 'záhlaví překrývá menu');
     expect(await page.evaluate(uncovered(`document.querySelector('.site-logo')`)), 'logo není vidět');
-    expect(await page.evaluate(uncovered(`document.querySelector('aside button[aria-pressed]')`)), 'přepínač barevného režimu není vidět');
+    expect(await page.evaluate(uncovered(HEADER_THEME_BUTTON)), 'tlačítko barevného režimu v záhlaví není vidět');
+    expect(await page.evaluate(uncovered(`document.querySelector('.site-header [data-language-switch]')`)), 'přepínač jazyka v záhlaví není vidět');
+    expect(!(await page.evaluate(`[...document.querySelectorAll('aside button[aria-pressed], aside .site-controls')].some((element) => element.checkVisibility())`)), 'v menu na počítači je vidět přepínač režimu nebo jazyka');
 
     /** Rozbalí všechny skupiny v menu; přepínač prostředí (první rozbalovací tlačítko) vynechá. */
     const openGroups = async () => {
@@ -560,10 +567,14 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     const lookBefore = await page.evaluate(COLOR_STATE);
     expect(lookBefore.mode, `body nemá třídu barevného režimu: ${await page.evaluate('document.body.className')}`);
     expect(lookBefore.logo === LOGO_COLORS[lookBefore.mode], `text loga má v režimu ${lookBefore.mode} barvu ${lookBefore.logo}`);
-    expect(await page.click(`document.querySelector('aside button[aria-pressed]')`), 'chybí přepínač barevného režimu');
+    expect(await page.tap(HEADER_THEME_BUTTON), 'chybí tlačítko barevného režimu');
     await sleep(300);
     const lookAfter = await page.evaluate(COLOR_STATE);
     expect(lookAfter.mode && lookAfter.mode !== lookBefore.mode, 'barevný režim se nepřepnul');
+    expect(
+      (await page.evaluate(`${HEADER_THEME_BUTTON}.getAttribute('aria-pressed')`)) === String(lookAfter.mode === 'dark-mode'),
+      `tlačítko barevného režimu neukazuje režim ${lookAfter.mode}`,
+    );
     expect(lookAfter.logo === LOGO_COLORS[lookAfter.mode], `text loga má po přepnutí do režimu ${lookAfter.mode} barvu ${lookAfter.logo}`);
     expect(lookAfter.background !== lookBefore.background, 'po přepnutí režimu se nezměnilo pozadí stránky');
     expect(await page.evaluate('window.notReloaded === true'), 'přepnutí režimu načetlo stránku znovu');
@@ -591,7 +602,15 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     await page.waitFor(mobileMenu, 'otevření menu na mobilu');
     await sleep(300);
     expect(await page.evaluate(belowTopBars(`(${mobileMenu}).getBoundingClientRect().top`)), 'na mobilu záhlaví překrývá menu');
-    expect(await page.evaluate(uncovered(`(${mobileMenu}).querySelector('button[aria-pressed]')`)), 'na mobilu není vidět přepínač barevného režimu');
+    // Přepínače jsou na mobilu v menu, ne v liště.
+    const menuThemeButton = `(${mobileMenu}).querySelector('[data-theme-toggle]')`;
+    expect(await page.evaluate(uncovered(menuThemeButton)), 'na mobilu není v menu vidět tlačítko barevného režimu');
+    expect(await page.evaluate(uncovered(`(${mobileMenu}).querySelector('[data-language-switch]')`)), 'na mobilu není v menu vidět přepínač jazyka');
+    expect(!(await page.evaluate(`document.querySelector('.site-header .site-controls').checkVisibility()`)), 'na mobilu jsou přepínače v liště');
+    const modeBefore = (await page.evaluate(COLOR_STATE)).mode;
+    await page.tap(menuThemeButton);
+    await sleep(300);
+    expect((await page.evaluate(COLOR_STATE)).mode !== modeBefore, 'na mobilu tlačítko v menu nepřepnulo barevný režim');
     expect(await page.evaluate(uncovered(logo)), 'na mobilu není při otevřeném menu vidět logo');
     // Poslední skupina v menu: stránka se k ní musí posunout daleko.
     expect(await page.tap(`[...(${mobileMenu}).querySelectorAll('a[href*="/tag/"]')].at(-1)`), 'v menu na mobilu chybí skupiny');

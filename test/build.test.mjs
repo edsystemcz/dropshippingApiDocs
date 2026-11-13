@@ -37,11 +37,14 @@ const TEMPLATE = '<html lang="{{lang}}"><title>{{pageTitle}}</title><script src=
 /** Logo, jak ho uloží grafický editor: s deklarací XML, typem dokumentu a jmennými prostory. */
 const LOGO = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M0 0h10v10z" style="fill:currentColor"/></svg>\n';
 
+/** Značka loga bez textu pro mobil, jak ji uloží grafický editor. */
+const LOGO_SYMBOL = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg viewBox="0 0 17 10" xmlns="http://www.w3.org/2000/svg" xmlns:affinity="https://www.affinity.studio/"><path d="M0 0h17v10z" style="fill:#e0004d"/></svg>\n';
+
 /**
  * Založí zdrojové složky s daným obsahem a vrátí vstupy pro build.
  * `theme` je obsah souboru s motivem; bez něj build žádný motiv nedostane.
  */
-async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, theme, translations = {}, scalarTranslations = {} }) {
+async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, logoSymbol = LOGO_SYMBOL, theme, translations = {}, scalarTranslations = {} }) {
   const dir = await mkdtemp(join(tmpdir(), 'build-'));
   const specDir = join(dir, 'spec');
   const overlayDir = join(dir, 'overlay');
@@ -66,6 +69,7 @@ async function project({ specs, overlays = {}, template = TEMPLATE, assets = {},
   }
   await writeFile(join(siteDir, 'index.html'), template);
   await writeFile(join(dir, 'logo.svg'), logo);
+  await writeFile(join(dir, 'logo-symbol.svg'), logoSymbol);
   if (theme !== undefined) await writeFile(join(dir, 'theme.css'), theme);
   const assetList = [];
   for (const [to, bytes] of Object.entries(assets)) {
@@ -83,6 +87,7 @@ async function project({ specs, overlays = {}, template = TEMPLATE, assets = {},
     outDir: join(dir, 'dist'),
     assets: assetList,
     logo: join(dir, 'logo.svg'),
+    logoSymbol: join(dir, 'logo-symbol.svg'),
     ...(theme !== undefined && { theme: join(dir, 'theme.css') }),
   };
 }
@@ -195,15 +200,15 @@ test('titulek stránky je v jazyce dané verze', async () => {
   assert.match(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), /<title>Dropshipping API documentation \| eD system<\/title>/);
 });
 
-test('logo se vloží do stránky jako SVG bez deklarace XML, typu dokumentu a jmenných prostorů, aby převzalo barvu textu', async () => {
-  const inputs = await project({ specs: bothAt('1.1.122'), template: '<html lang="{{lang}}"><a href="#">{{logo}}</a></html>' });
+test('logo i jeho značka pro mobil se vloží do stránky jako SVG bez deklarace XML, typu dokumentu a jmenných prostorů, aby převzaly barvu textu', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), template: '<html lang="{{lang}}"><a href="#">{{logo}}{{logoSymbol}}</a></html>' });
 
   await run(inputs);
 
   for (const dir of [inputs.outDir, join(inputs.outDir, 'en')]) {
     assert.equal(
       await readFile(join(dir, 'index.html'), 'utf8'),
-      `<html lang="${dir === inputs.outDir ? 'cs' : 'en'}"><a href="#"><svg viewBox="0 0 10 10"><path d="M0 0h10v10z" style="fill:currentColor"/></svg></a></html>`,
+      `<html lang="${dir === inputs.outDir ? 'cs' : 'en'}"><a href="#"><svg viewBox="0 0 10 10"><path d="M0 0h10v10z" style="fill:currentColor"/></svg><svg viewBox="0 0 17 10"><path d="M0 0h17v10z" style="fill:#e0004d"/></svg></a></html>`,
     );
   }
 });
@@ -1511,17 +1516,27 @@ test('česká stránka předá Scalaru český překlad rozhraní, anglická jeh
 
 // Přepínač jazyka v záhlaví.
 
-test('přepínač jazyka ukazuje CZ | EN, zvolený jazyk jako aktuální a druhý jako relativní odkaz na jeho verzi', async () => {
+test('přepínač jazyka ukazuje CZ a EN, zvolený jazyk jako aktuální a druhý jako relativní odkaz na jeho verzi', async () => {
   const inputs = await project({ specs: bothAt('1.1.122'), template: '<header>{{languageSwitch}}</header>' });
 
   await run(inputs);
 
+  // Adresu verze nese i data-language-switch: skript k ní doplní místo v referenci.
   assert.equal(
     await readFile(join(inputs.outDir, 'index.html'), 'utf8'),
-    '<header><nav class="site-languages" aria-label="Jazyk"><span lang="cs" aria-current="true">CZ</span> <span aria-hidden="true">|</span> <a href="en/" hreflang="en" lang="en" data-language-switch>EN</a></nav></header>',
+    '<header><nav class="site-languages" aria-label="Jazyk"><span lang="cs" aria-current="true">CZ</span><a href="en/" hreflang="en" lang="en" data-language-switch="en/">EN</a></nav></header>',
   );
   assert.equal(
     await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'),
-    '<header><nav class="site-languages" aria-label="Language"><a href="../" hreflang="cs" lang="cs" data-language-switch>CZ</a> <span aria-hidden="true">|</span> <span lang="en" aria-current="true">EN</span></nav></header>',
+    '<header><nav class="site-languages" aria-label="Language"><a href="../" hreflang="cs" lang="cs" data-language-switch="../">CZ</a><span lang="en" aria-current="true">EN</span></nav></header>',
   );
+});
+
+test('tlačítko barevného režimu má popisek v jazyce verze', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), template: '<button aria-label="{{themeLabel}}"></button>' });
+
+  await run(inputs);
+
+  assert.equal(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), '<button aria-label="Tmavý režim"></button>');
+  assert.equal(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), '<button aria-label="Dark mode"></button>');
 });

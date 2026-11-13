@@ -1,8 +1,10 @@
 /*
  * Záhlaví webu nad referencí Scalaru s logem, které odkazuje na úvod,
- * a přepínačem jazyka (ZADANI část 12 a 16), a drobné úpravy vzhledu reference.
+ * tlačítkem barevného režimu a přepínačem jazyka (ZADANI část 12 a 16),
+ * a drobné úpravy vzhledu reference. Na mobilu je v liště jen značka loga
+ * a přepínače jsou v menu Scalaru.
  * Nepatří k motivu: platí i po smazání site/theme.css, barvy bere
- * z proměnných Scalaru.
+ * z proměnných Scalaru; motiv smí barvy přepínačů určit proměnnými --theme-switch-*.
  */
 
 :root {
@@ -11,8 +13,6 @@
   --site-logo-height: 32px;
   /* Šířka loga podle poměru stran jeho viewBox (1452 × 308). */
   --site-logo-width: calc(var(--site-logo-height) * 1452 / 308);
-  /* Šířka přepínače jazyka; na mobilu podle ní končí název oddílu v liště. */
-  --site-languages-width: 64px;
 }
 
 .site-header {
@@ -39,44 +39,22 @@
   outline-offset: 4px;
 }
 
+.site-logo > span {
+  display: flex;
+}
+
 .site-logo svg {
   width: var(--site-logo-width);
   height: var(--site-logo-height);
 }
 
-/* Přepínač jazyka CZ | EN vpravo v záhlaví. */
-.site-languages {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: flex-end;
-  box-sizing: border-box;
-  width: var(--site-languages-width);
-  margin-left: auto;
-  font-family: var(--scalar-font);
-  font-size: var(--scalar-font-size-3);
-  color: var(--scalar-color-3);
+/* Značka bez textu je jen pro mobil. */
+.site-logo-symbol {
+  --site-logo-width: calc(var(--site-logo-height) * 1732 / 1039);
 }
 
-.site-languages [aria-current] {
-  font-weight: var(--scalar-semibold);
-  color: var(--scalar-color-1);
-}
-
-.site-languages a {
-  color: var(--scalar-color-2);
-  text-decoration: none;
-  border-radius: var(--scalar-radius);
-}
-
-.site-languages a:hover {
-  color: var(--scalar-color-accent);
-  text-decoration: underline;
-}
-
-.site-languages a:focus-visible {
-  outline: 2px solid var(--scalar-color-accent);
-  outline-offset: 2px;
+.site-logo > .site-logo-symbol {
+  display: none;
 }
 
 /*
@@ -92,17 +70,117 @@
   color: #ffffff;
 }
 
+/* Přepínače: tlačítko barevného režimu a přepínač jazyka. */
+.site-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--scalar-font);
+}
+
+.site-header .site-controls {
+  margin-left: auto;
+}
+
+.site-theme {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--scalar-color-2);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+}
+
+.site-theme:hover {
+  color: var(--scalar-color-1);
+  background: var(--theme-switch-track, var(--scalar-background-3));
+}
+
+.site-theme svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Ikona ukazuje, kam tlačítko přepne: ve světlém režimu měsíc, v tmavém slunce. */
+.site-theme-sun,
+.dark-mode .site-theme-moon {
+  display: none;
+}
+
+.dark-mode .site-theme-sun {
+  display: block;
+}
+
+/* Přepínač jazyka vypadá jako posuvník: zvolený jazyk je jezdec na dráze. */
+.site-languages {
+  display: flex;
+  padding: 3px;
+  font-size: 12px;
+  font-weight: var(--scalar-bold);
+  line-height: 1;
+  background: var(--theme-switch-track, var(--scalar-background-3));
+  border-radius: var(--scalar-radius);
+}
+
+.site-languages > * {
+  padding: 6px 10px;
+  border-radius: calc(var(--scalar-radius) - 2px);
+}
+
+.site-languages [aria-current] {
+  color: var(--scalar-color-accent);
+  background: var(--theme-switch-thumb, var(--scalar-background-1));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+.site-languages a {
+  color: var(--theme-switch-color, var(--scalar-color-1));
+  text-decoration: none;
+}
+
+.site-languages a:hover {
+  text-decoration: underline;
+}
+
+.site-theme:focus-visible,
+.site-languages a:focus-visible {
+  outline: 2px solid var(--scalar-color-accent);
+  outline-offset: 2px;
+}
+
 /*
- * Mobil (Scalar pod 1000 px skryje menu za tlačítko v liště): logo
- * s přepínačem jazyka leží vpravo v liště Scalaru místo vlastního řádku nad ní; vlevo zůstává tlačítko
- * menu a název právě čteného oddílu. Scalar pak nemá nad lištou nic, posun
- * ke kotvám počítá jen s ní.
+ * Patička menu Scalaru: jeho vlastní přepínač režimu je skrytý, přepíná ho
+ * tlačítko .site-theme. Kopii přepínačů, kterou tam vloží skript stránky,
+ * je vidět jen na mobilu.
+ */
+.darklight-reference button[aria-pressed]:not([data-theme-toggle]) {
+  display: none;
+}
+
+.darklight-reference .site-controls {
+  display: none;
+  justify-content: space-between;
+}
+
+/*
+ * Mobil (Scalar pod 1000 px skryje menu za tlačítko v liště): značka loga
+ * leží vpravo v liště Scalaru místo vlastního řádku nad ní; vlevo zůstává
+ * tlačítko menu a název právě čteného oddílu. Přepínače jsou v menu. Scalar
+ * pak nemá nad lištou nic, posun ke kotvám počítá jen s ní.
  */
 @media (max-width: 999.98px) {
   :root {
     --scalar-custom-header-height: 0px;
     --site-logo-height: 28px;
-    --site-languages-width: 20px;
   }
 
   .site-header {
@@ -118,26 +196,27 @@
     border-bottom: 0;
   }
 
+  .site-logo > .site-logo-full,
+  .site-header .site-controls {
+    display: none;
+  }
+
+  .site-logo > .site-logo-symbol {
+    display: flex;
+  }
+
+  .darklight-reference .site-controls {
+    display: flex;
+  }
+
   /*
    * Název oddílu končí před logem. Písmo se na užší obrazovce zmenší a delší
    * název se zalomí až na tři řádky, které se do 50 px lišty vejdou; co se
    * nevejde ani tak, nahradí tři tečky. Selektory s .scalar-app přebijí
    * třídy lišty (px-2, text-sm, whitespace-nowrap).
    */
-  /*
-   * Vedle loga zbývá na název oddílu málo místa, proto přepínač ukazuje jen
-   * odkaz na druhý jazyk; zvolený jazyk je vidět na textech stránky.
-   */
-  .site-languages {
-    margin-left: 8px;
-  }
-
-  .site-languages > :not(a) {
-    display: none;
-  }
-
   .scalar-app .t-doc__header header {
-    padding-right: calc(var(--site-logo-width) + var(--site-languages-width) + 32px);
+    padding-right: calc(var(--site-logo-height) * 1732 / 1039 + 24px);
   }
 
   .scalar-app .t-doc__header header > span {

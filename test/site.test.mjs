@@ -158,9 +158,14 @@ test('nad referencí je záhlaví s logem, které vede na úvod a je vložené j
     assert.ok(content.indexOf(header[0]) < content.indexOf('<div id="app">'), `${page}: záhlaví není nad referencí`);
     const link = /<a class="site-logo" href="\.\/"[^>]*>(.*?)<\/a>/s.exec(header[1]);
     assert.ok(link, `${page}: logo neodkazuje na začátek stránky`);
-    assert.match(link[1], /^<svg[^>]*viewBox/, `${page}: logo není inline SVG`);
-    assert.match(link[1], /fill:currentColor/, `${page}: text loga nepřebírá barvu stránky`);
-    assert.match(link[1], /fill:#e0004d/i, `${page}: značka loga není ve firemní růžové`);
+    const full = /<span class="site-logo-full">(.*?)<\/span><span class="site-logo-symbol">(.*?)<\/span>$/s.exec(link[1]);
+    assert.ok(full, `${page}: v odkazu loga není celé logo a jeho značka pro mobil`);
+    const [, logo, symbol] = full;
+    assert.match(logo, /^<svg[^>]*viewBox/, `${page}: logo není inline SVG`);
+    assert.match(logo, /fill:currentColor/, `${page}: text loga nepřebírá barvu stránky`);
+    assert.match(logo, /fill:#e0004d/i, `${page}: značka loga není ve firemní růžové`);
+    assert.match(symbol, /^<svg[^>]*viewBox/, `${page}: značka loga pro mobil není inline SVG`);
+    assert.deepEqual([...new Set([...symbol.matchAll(/fill:(#?\w+)/g)].map(([, color]) => color.toLowerCase()))], ['#e0004d'], `${page}: značka loga pro mobil není celá ve firemní růžové`);
   }
 });
 
@@ -456,8 +461,10 @@ test('česká stránka nastaví Scalaru češtinu s překladem rozhraní, anglic
   assert.deepEqual(await localization('en/index.html'), { locale: 'en' });
 });
 
-test('záhlaví má přepínač jazyka CZ | EN, který vede na druhou verzi', async () => {
+test('záhlaví má tlačítko barevného režimu a přepínač jazyka CZ a EN, který vede na druhou verzi', async () => {
   const header = async (page) => /<header class="site-header"[^>]*>(.*?)<\/header>/s.exec(await read(page))[1];
-  assert.match(await header('index.html'), /<a href="en\/" hreflang="en"[^>]*data-language-switch>EN<\/a>/);
-  assert.match(await header('en/index.html'), /<a href="\.\.\/" hreflang="cs"[^>]*data-language-switch>CZ<\/a>/);
+  assert.match(await header('index.html'), /<a href="en\/" hreflang="en"[^>]*data-language-switch="en\/">EN<\/a>/);
+  assert.match(await header('en/index.html'), /<a href="\.\.\/" hreflang="cs"[^>]*data-language-switch="\.\.\/">CZ<\/a>/);
+  assert.match(await header('index.html'), /<button class="site-theme" type="button" aria-label="Tmavý režim" aria-pressed="false" data-theme-toggle>/);
+  assert.match(await header('en/index.html'), /<button class="site-theme" type="button" aria-label="Dark mode" aria-pressed="false" data-theme-toggle>/);
 });

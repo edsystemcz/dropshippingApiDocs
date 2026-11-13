@@ -267,3 +267,16 @@ code .hljs-template-tag { color: var(--code-flamingo) !important; }
 code .hljs-template-variable { color: var(--code-flamingo) !important; }
 code .hljs-addition { color: var(--code-green) !important; background: rgb(from var(--code-green) r g b / 15%) !important; }
 code .hljs-deletion { color: var(--code-red) !important; background: rgb(from var(--code-red) r g b / 15%) !important; }
+
+/*
+ * Přepínač jazyka v záhlaví a v menu (site/site.css): dráha surface0, jezdec
+ * base s textem v akcentu (6,22:1 v Latte, 5,96:1 v Mocha), neaktivní jazyk
+ * v barvě text (5,17:1 a 8,69:1 na surface0). Dráha je i podkladem tlačítka
+ * barevného režimu pod myší.
+ */
+.light-mode,
+.dark-mode {
+  --theme-switch-track: var(--ctp-surface0);
+  --theme-switch-thumb: var(--ctp-base);
+  --theme-switch-color: var(--ctp-text);
+}
