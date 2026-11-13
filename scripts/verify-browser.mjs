@@ -18,7 +18,10 @@
 //     menu a název oddílu před ním zůstává vidět celý);
 //     logo vede na úvod zvoleného prostředí,
 //   - tlačítko barevného režimu a přepínač jazyka jsou na počítači v záhlaví
-//     a na mobilu v menu; na mobilu je v liště jen značka loga,
+//     a na mobilu v menu na řádku s odkazem na Scalar (na počítači je odkaz
+//     uprostřed sloupce); na mobilu je v liště zleva značka loga, název oddílu
+//     a tlačítko menu; tlačítko režimu po animaci ukazuje správnou ikonu,
+//   - před spuštěním Scalaru má záhlaví písmo Inter a přepínače nejsou vidět,
 //   - přepnutí režimu bez načtení stránky změní motiv i barvu textu loga,
 //   - text v barvě akcentu, v zelené a v barvách syntaxe ukázek
 //     kódu má kontrast aspoň 4,5:1 na pozadí, na kterém je, v obou režimech,
@@ -455,6 +458,14 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     expect(await page.evaluate(uncovered(HEADER_THEME_BUTTON)), 'tlačítko barevného režimu v záhlaví není vidět');
     expect(await page.evaluate(uncovered(`document.querySelector('.site-header [data-language-switch]')`)), 'přepínač jazyka v záhlaví není vidět');
     expect(!(await page.evaluate(`[...document.querySelectorAll('aside button[aria-pressed], aside .site-controls')].some((element) => element.checkVisibility())`)), 'v menu na počítači je vidět přepínač režimu nebo jazyka');
+    expect(
+      await page.evaluate(`(() => {
+        const link = document.querySelector('aside .darklight-reference a[href*="scalar.com"]').getBoundingClientRect();
+        const column = document.querySelector('aside').getBoundingClientRect();
+        return Math.abs(link.left + link.width / 2 - (column.left + column.width / 2)) <= 2;
+      })()`),
+      'odkaz na Scalar není v menu na počítači uprostřed sloupce',
+    );
 
     /** Rozbalí všechny skupiny v menu; přepínač prostředí (první rozbalovací tlačítko) vynechá. */
     const openGroups = async () => {
@@ -575,6 +586,10 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
       (await page.evaluate(`${HEADER_THEME_BUTTON}.getAttribute('aria-pressed')`)) === String(lookAfter.mode === 'dark-mode'),
       `tlačítko barevného režimu neukazuje režim ${lookAfter.mode}`,
     );
+    // Po animaci je vidět ikona, kam tlačítko přepne: v tmavém režimu slunce.
+    await sleep(500);
+    const shownIcon = await page.evaluate(`[...${HEADER_THEME_BUTTON}.querySelectorAll('svg')].filter((icon) => getComputedStyle(icon).opacity === '1').map((icon) => icon.getAttribute('class'))`);
+    expect(same(shownIcon, [lookAfter.mode === 'dark-mode' ? 'site-theme-sun' : 'site-theme-moon']), `tlačítko barevného režimu ukazuje v režimu ${lookAfter.mode} ikony ${shownIcon.join(', ') || 'žádné'}`);
     expect(lookAfter.logo === LOGO_COLORS[lookAfter.mode], `text loga má po přepnutí do režimu ${lookAfter.mode} barvu ${lookAfter.logo}`);
     expect(lookAfter.background !== lookBefore.background, 'po přepnutí režimu se nezměnilo pozadí stránky');
     expect(await page.evaluate('window.notReloaded === true'), 'přepnutí režimu načetlo stránku znovu');
@@ -607,6 +622,14 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     expect(await page.evaluate(uncovered(menuThemeButton)), 'na mobilu není v menu vidět tlačítko barevného režimu');
     expect(await page.evaluate(uncovered(`(${mobileMenu}).querySelector('[data-language-switch]')`)), 'na mobilu není v menu vidět přepínač jazyka');
     expect(!(await page.evaluate(`document.querySelector('.site-header .site-controls').checkVisibility()`)), 'na mobilu jsou přepínače v liště');
+    const scalarLink = `(${mobileMenu}).querySelector('a[href*="scalar.com"]')`;
+    expect(
+      await page.evaluate(`${sameRow(scalarLink, menuThemeButton)} && ${scalarLink}.getBoundingClientRect().right <= ${menuThemeButton}.getBoundingClientRect().left`),
+      'na mobilu nejsou přepínače v menu vpravo na řádku s odkazem na Scalar',
+    );
+    // Na přepínače se dobře klepe: tlačítko i přepínač jazyka jsou aspoň 40 px vysoké.
+    const smallTargets = await page.evaluate(`[${menuThemeButton}, (${mobileMenu}).querySelector('.site-languages')].filter((element) => element.getBoundingClientRect().height < 40).map((element) => element.getAttribute('aria-label'))`);
+    expect(smallTargets.length === 0, `na mobilu jsou v menu malé přepínače: ${smallTargets.join(', ')}`);
     const modeBefore = (await page.evaluate(COLOR_STATE)).mode;
     await page.tap(menuThemeButton);
     await sleep(300);
@@ -616,14 +639,14 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     expect(await page.tap(`[...(${mobileMenu}).querySelectorAll('a[href*="/tag/"]')].at(-1)`), 'v menu na mobilu chybí skupiny');
     await sleep(1000);
     expect(await page.evaluate(belowTopBars(TARGET_TOP)), `na mobilu záhlaví zakrývá cíl odkazu ${await page.evaluate('location.hash')}`);
-    // Název právě čteného oddílu ukazuje Scalar v liště za tlačítkem menu; logo je až za ním.
+    // Lišta zleva: logo, název právě čteného oddílu a tlačítko menu úplně vpravo.
     // Menu zůstává otevřené, tlačítko lišty má teď popisek pro zavření.
     const sectionTitle = `document.querySelector('.t-doc__header header > span')`;
     const menuButton = `document.querySelector('.t-doc__header header > button')`;
     expect(await page.evaluate(`Boolean(${sectionTitle}?.textContent.trim()) && ${sectionTitle}.checkVisibility({ visibilityProperty: true })`), 'na mobilu není v liště vidět název oddílu');
     expect(
-      await page.evaluate(`${sectionTitle}.getBoundingClientRect().right <= ${logo}.getBoundingClientRect().left && ${menuButton}.getBoundingClientRect().right <= ${sectionTitle}.getBoundingClientRect().left`),
-      'na mobilu logo nestojí v liště vpravo za názvem oddílu',
+      await page.evaluate(`${logo}.getBoundingClientRect().right <= ${sectionTitle}.getBoundingClientRect().left && ${sectionTitle}.getBoundingClientRect().right <= ${menuButton}.getBoundingClientRect().left`),
+      'na mobilu není v liště zleva logo, název oddílu a tlačítko menu',
     );
     // Operace s nejdelším názvem: název se zalomí nebo zmenší, ale je vidět celý.
     const { address: longAddress, title: longTitle } = expected[defaultEnvironment.slug].longestOperation;
@@ -632,7 +655,7 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     await page.evaluate(`location.hash = ${JSON.stringify(longAddress)}`);
     await page.waitFor(`${sectionTitle}?.textContent.trim() === ${JSON.stringify(longTitle)}`, `název ${longTitle} v liště na mobilu`);
     expect(
-      await page.evaluate(`${sectionTitle}.scrollWidth <= ${sectionTitle}.clientWidth + 1 && ${sectionTitle}.scrollHeight <= ${sectionTitle}.clientHeight + 1 && ${sectionTitle}.getBoundingClientRect().right <= ${logo}.getBoundingClientRect().left`),
+      await page.evaluate(`${sectionTitle}.scrollWidth <= ${sectionTitle}.clientWidth + 1 && ${sectionTitle}.scrollHeight <= ${sectionTitle}.clientHeight + 1 && ${logo}.getBoundingClientRect().right <= ${sectionTitle}.getBoundingClientRect().left`),
       `na mobilu není v liště vidět celý název ${longTitle}`,
     );
 
@@ -705,6 +728,31 @@ async function verifyLanguageSwitch({ debugPort, fromUrl, toUrl, environment, op
   return problems;
 }
 
+/**
+ * Záhlaví před spuštěním Scalaru (jeho skript je zablokovaný): písmo je Inter,
+ * ne výchozí patkové písmo prohlížeče, a přepínače bez barev Scalaru nejsou
+ * vidět. Vrací seznam problémů.
+ */
+async function verifyBeforeScalar({ debugPort, url }) {
+  const problems = [];
+  const page = await openPage(debugPort);
+  try {
+    await page.send('Network.setBlockedURLs', { urls: ['*/assets/scalar/standalone.js'] });
+    await page.send('Page.navigate', { url });
+    await page.waitFor(`document.readyState === 'complete' && document.fonts.status === 'loaded'`, 'načtení stránky bez Scalaru');
+    const font = await page.evaluate(`getComputedStyle(document.querySelector('.site-header')).fontFamily`);
+    if (!/^"?Inter"?,/.test(font)) problems.push(`záhlaví má před spuštěním Scalaru písmo ${font}`);
+    if (await page.evaluate(`document.querySelector('.site-controls').checkVisibility({ visibilityProperty: true })`)) {
+      problems.push('přepínače jsou vidět dřív, než Scalar nastaví barevný režim');
+    }
+  } catch (error) {
+    problems.push(error.message);
+  } finally {
+    await page.close();
+  }
+  return problems;
+}
+
 /** Hodnota překladu podle klíče s tečkami (`search.open`), nebo undefined. */
 const translationAt = (translations, key) => key.split('.').reduce((value, part) => value?.[part], translations);
 
@@ -747,6 +795,7 @@ try {
     for (const { slug } of inputs.environments) {
       expected[slug] = await expectedAddresses(join(outDir, language.dir, `openapi.${slug}.json`), slug);
     }
+    report(`${language.label} před spuštěním Scalaru`, await verifyBeforeScalar({ debugPort: chrome.port, url: pageUrl(PUBLIC_HOST, language) }), 'písmo Inter, přepínače skryté');
     for (const host of ['127.0.0.1', PUBLIC_HOST]) {
       const url = pageUrl(host, language);
       const problems = await verifyPage({ debugPort: chrome.port, url, environments: inputs.environments, expected, labels });

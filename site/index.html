@@ -85,21 +85,27 @@
       document.addEventListener('click', (event) => {
         if (event.target.closest?.('[data-theme-toggle]')) document.querySelector(SCALAR_THEME_TOGGLE)?.click();
       });
+      // Animace ikon se zapne až po prvním nastavení režimu, aby se ikona
+      // nehýbala při načtení stránky.
       const syncThemeButtons = () => {
         const dark = String(document.body.classList.contains('dark-mode'));
         for (const button of document.querySelectorAll('[data-theme-toggle]')) button.setAttribute('aria-pressed', dark);
+        if (document.body.classList.contains('light-mode') || dark === 'true') {
+          requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add('site-theme-ready')));
+        }
       };
       new MutationObserver(syncThemeButtons).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
       // Na mobilu jsou přepínače v menu: kopie ze záhlaví se vloží do patičky
-      // menu Scalaru, kde byl jeho přepínač režimu. Scalar menu při otevření
-      // vykresluje znovu, proto se kopie vkládá při každé změně stránky.
-      // Kterou kopii je vidět, určuje site/site.css podle šířky okna.
+      // menu Scalaru na řádek s odkazem na Scalar, kde byl jeho přepínač
+      // režimu. Scalar menu při otevření vykresluje znovu, proto se kopie
+      // vkládá při každé změně stránky. Kterou kopii je vidět, určuje
+      // site/site.css podle šířky okna.
       const controls = document.querySelector('.site-header .site-controls');
       const placeControls = () => {
-        for (const footer of document.querySelectorAll('.darklight-reference')) {
-          if (footer.querySelector('.site-controls')) continue;
-          footer.prepend(controls.cloneNode(true));
+        for (const row of document.querySelectorAll('.darklight-reference :has(> button[aria-pressed]:not([data-theme-toggle]))')) {
+          if (row.querySelector('.site-controls')) continue;
+          row.append(controls.cloneNode(true));
           syncThemeButtons();
         }
       };

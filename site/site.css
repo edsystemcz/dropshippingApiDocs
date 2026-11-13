@@ -13,6 +13,12 @@
   --site-logo-height: 32px;
   /* Šířka loga podle poměru stran jeho viewBox (1452 × 308). */
   --site-logo-width: calc(var(--site-logo-height) * 1452 / 308);
+  /*
+   * Písmo záhlaví. Proměnnou --scalar-font definují až styly, které Scalar
+   * vloží do stránky při spuštění; do té doby by záhlaví mělo výchozí patkové
+   * písmo prohlížeče. Inter je přibalený (assets/fonts/fonts.css).
+   */
+  --site-font: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 .site-header {
@@ -25,8 +31,17 @@
   align-items: center;
   height: var(--scalar-custom-header-height);
   padding: 0 16px;
+  font-family: var(--site-font);
   background: var(--scalar-background-1);
   border-bottom: var(--scalar-border-width) solid var(--scalar-border-color);
+}
+
+/*
+ * Barvy přepínačů jsou z proměnných Scalaru a motivu, které platí až od chvíle,
+ * kdy Scalar dá na body třídu barevného režimu; do té doby jsou přepínače skryté.
+ */
+body:not(.light-mode, .dark-mode) .site-controls {
+  visibility: hidden;
 }
 
 .site-logo {
@@ -72,10 +87,11 @@
 
 /* Přepínače: tlačítko barevného režimu a přepínač jazyka. */
 .site-controls {
+  --site-control-size: 32px;
   display: flex;
   gap: 12px;
   align-items: center;
-  font-family: var(--scalar-font);
+  font-family: var(--site-font);
 }
 
 .site-header .site-controls {
@@ -85,8 +101,9 @@
 .site-theme {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  flex: none;
+  width: var(--site-control-size);
+  height: var(--site-control-size);
   padding: 0;
   color: var(--scalar-color-2);
   cursor: pointer;
@@ -101,8 +118,10 @@
 }
 
 .site-theme svg {
-  width: 18px;
-  height: 18px;
+  /* Obě ikony leží přes sebe; vidět je ta, kam tlačítko přepne. */
+  grid-area: 1 / 1;
+  width: calc(var(--site-control-size) * 0.56);
+  height: calc(var(--site-control-size) * 0.56);
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -110,14 +129,37 @@
   stroke-linejoin: round;
 }
 
-/* Ikona ukazuje, kam tlačítko přepne: ve světlém režimu měsíc, v tmavém slunce. */
+/*
+ * Ve světlém režimu je vidět měsíc, v tmavém slunce. Při přepnutí odchozí
+ * ikona zajede dozadu (zmenší se, otočí a zmizí) a příchozí vyjede dopředu
+ * s mírným překmitem. Přechody platí až po prvním nastavení režimu
+ * (třída site-theme-ready od skriptu stránky), aby se ikona nehýbala při načtení.
+ */
 .site-theme-sun,
 .dark-mode .site-theme-moon {
-  display: none;
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.3);
+}
+
+.dark-mode .site-theme-moon {
+  transform: rotate(90deg) scale(0.3);
 }
 
 .dark-mode .site-theme-sun {
-  display: block;
+  opacity: 1;
+  transform: none;
+}
+
+.site-theme-ready .site-theme svg {
+  transition:
+    opacity 250ms ease,
+    transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-theme-ready .site-theme svg {
+    transition: opacity 150ms ease;
+  }
 }
 
 /* Přepínač jazyka vypadá jako posuvník: zvolený jazyk je jezdec na dráze. */
@@ -132,7 +174,12 @@
 }
 
 .site-languages > * {
-  padding: 6px 10px;
+  display: grid;
+  place-items: center;
+  min-width: calc(var(--site-control-size) - 6px);
+  height: calc(var(--site-control-size) - 6px);
+  padding: 0 8px;
+  box-sizing: border-box;
   border-radius: calc(var(--scalar-radius) - 2px);
 }
 
@@ -148,7 +195,7 @@
 }
 
 .site-languages a:hover {
-  text-decoration: underline;
+  background: color-mix(in srgb, var(--theme-switch-thumb, var(--scalar-background-1)) 55%, transparent);
 }
 
 .site-theme:focus-visible,
@@ -159,8 +206,9 @@
 
 /*
  * Patička menu Scalaru: jeho vlastní přepínač režimu je skrytý, přepíná ho
- * tlačítko .site-theme. Kopii přepínačů, kterou tam vloží skript stránky,
- * je vidět jen na mobilu.
+ * tlačítko .site-theme. Kopii přepínačů, kterou skript stránky vloží na řádek
+ * s odkazem „Powered by Scalar“, je vidět jen na mobilu; na počítači je odkaz
+ * uprostřed sloupce menu.
  */
 .darklight-reference button[aria-pressed]:not([data-theme-toggle]) {
   display: none;
@@ -168,7 +216,10 @@
 
 .darklight-reference .site-controls {
   display: none;
-  justify-content: space-between;
+}
+
+.darklight-reference div:has(> a[href*='scalar.com']) {
+  justify-content: center;
 }
 
 /*
@@ -186,7 +237,7 @@
   .site-header {
     position: fixed;
     /* Šířka podle loga, zbytek lišty zůstává Scalaru. */
-    right: 0;
+    left: 0;
     /* Nad lištou Scalaru, i když otevřené menu dostane z-index 50. */
     z-index: 60;
     /* Výška lišty Scalaru (--scalar-header-height platí jen uvnitř Scalaru). */
@@ -205,21 +256,38 @@
     display: flex;
   }
 
+  /* Na řádku s odkazem na Scalar vpravo, větší, aby se na ně dobře klepalo. */
   .darklight-reference .site-controls {
+    --site-control-size: 44px;
     display: flex;
+    margin-left: 12px;
+  }
+
+  .darklight-reference .site-languages {
+    font-size: 14px;
+  }
+
+  .darklight-reference div:has(> a[href*='scalar.com']) {
+    justify-content: flex-start;
   }
 
   /*
-   * Název oddílu končí před logem. Písmo se na užší obrazovce zmenší a delší
-   * název se zalomí až na tři řádky, které se do 50 px lišty vejdou; co se
-   * nevejde ani tak, nahradí tři tečky. Selektory s .scalar-app přebijí
-   * třídy lišty (px-2, text-sm, whitespace-nowrap).
+   * Lišta Scalaru zleva: logo, název oddílu zarovnaný vpravo a tlačítko menu
+   * úplně vpravo, kde ho lidé na mobilu čekají. Název začíná za logem. Písmo
+   * se na užší obrazovce zmenší a delší název se zalomí až na tři řádky, které
+   * se do 50 px lišty vejdou; co se nevejde ani tak, nahradí tři tečky.
+   * Selektory s .scalar-app přebijí třídy lišty (px-2, text-sm, whitespace-nowrap).
    */
   .scalar-app .t-doc__header header {
-    padding-right: calc(var(--site-logo-height) * 1732 / 1039 + 24px);
+    padding-left: calc(var(--site-logo-height) * 1732 / 1039 + 24px);
+  }
+
+  .scalar-app .t-doc__header header > button {
+    order: 1;
   }
 
   .scalar-app .t-doc__header header > span {
+    text-align: right;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
