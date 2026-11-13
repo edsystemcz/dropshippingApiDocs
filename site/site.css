@@ -309,6 +309,18 @@ body:not(.light-mode, .dark-mode) .site-controls {
   padding: 0;
 }
 
+/*
+ * Buňky tabulek v textech lámou řádek jen mezi slovy: sloupec je aspoň tak
+ * široký jako nejdelší slovo, takže kód jako `/codelists/currencies` zůstane
+ * celý; zalomí se jen slovo širší než celá tabulka. Scalar v buňkách dovoluje
+ * zalomení kdekoli a své styly vkládá až po tomto souboru, proto selektor
+ * potřebuje vyšší specificitu než jeho `.scalar-app .markdown td`.
+ */
+.scalar-app .markdown table :is(td, th) {
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
 /* Větší mezera mezi odznaky verzí a nadpisem úvodu. */
 .scalar-app .introduction-section .section-content > .flex:has(> .badge) {
   margin-bottom: 8px;

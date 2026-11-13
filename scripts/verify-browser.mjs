@@ -331,6 +331,22 @@ const STYLED_CODE_IN_LINKS = `[...document.querySelectorAll('a code')].filter((c
   if (style.color === linkColor && style.backgroundColor === 'rgba(0, 0, 0, 0)') return [];
   return [code.textContent.trim().slice(0, 40) + ' (' + style.color + ' na ' + style.backgroundColor + ', odkaz ' + linkColor + ')'];
 })`;
+/**
+ * Kód v buňkách tabulek v textech: kolik ho na stránce je a která jeho slova
+ * se zalomila uprostřed. Scalar v buňkách dovoluje zalomení kdekoli,
+ * `site/site.css` láme jen mezi slovy.
+ */
+const CODE_IN_TABLES = `(() => {
+  const codes = [...document.querySelectorAll('.markdown td code')].filter((code) => code.checkVisibility());
+  const broken = codes.flatMap((code) => [...code.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE).flatMap((text) =>
+    [...text.data.matchAll(/\\S+/g)].filter((word) => {
+      const range = document.createRange();
+      range.setStart(text, word.index);
+      range.setEnd(text, word.index + word[0].length);
+      return range.getClientRects().length > 1;
+    }).map((word) => word[0])));
+  return { count: codes.length, broken };
+})()`;
 /** Horní okraj místa, na které ukazuje adresa za #, nebo null, když na stránce není. */
 const TARGET_TOP = `document.getElementById(decodeURIComponent(location.hash.slice(1)))?.getBoundingClientRect().top ?? null`;
 /** Výraz pro prohlížeč: vrací, jestli číslo `topExpression` (horní okraj) leží pod záhlavím a lištami. */
@@ -639,6 +655,10 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     await page.send('Page.reload');
     await page.waitFor(`document.querySelector('h1') && ${buttonStartingWith(labels.openMenu)}?.checkVisibility()`, 'vykreslení reference na mobilu');
     await sleep(1000);
+    // Na úzké obrazovce se kód v tabulkách textů láme jen mezi slovy.
+    const tableCode = await page.evaluate(CODE_IN_TABLES);
+    expect(tableCode.count > 0, 'na mobilu není v textech žádná tabulka s kódem, zalomení nejde ověřit');
+    expect(tableCode.broken.length === 0, `na mobilu se kód v tabulce zalomil uprostřed slova: ${tableCode.broken.join(', ')}`);
     const logo = `document.querySelector('.site-logo')`;
     expect(await page.evaluate(uncovered(buttonStartingWith(labels.openMenu))), 'na mobilu záhlaví zakrývá tlačítko menu');
     expect(await page.evaluate(uncovered(logo)), 'na mobilu není vidět logo');
