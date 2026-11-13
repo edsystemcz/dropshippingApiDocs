@@ -21,8 +21,10 @@
 //     a na mobilu v menu na řádku s odkazem na Scalar (na počítači je odkaz
 //     uprostřed sloupce); na mobilu je v liště zleva značka loga, název oddílu
 //     a tlačítko menu; tlačítko režimu po animaci ukazuje správnou ikonu,
-//   - před spuštěním Scalaru má záhlaví písmo Inter a přepínače nejsou vidět,
-//   - rozbalená skupina v menu má animaci a odkazy plynulý přechod barvy,
+//   - před spuštěním Scalaru má záhlaví písmo Inter, logo barvu světlého
+//     režimu a přepínače nejsou vidět,
+//   - rozbalená skupina v menu a vyměněná ukázka kódu mají animaci a odkazy
+//     plynulý přechod barvy,
 //   - přepnutí režimu bez načtení stránky změní motiv i barvu textu loga,
 //   - text v barvě akcentu, v zelené a v barvách syntaxe ukázek
 //     kódu má kontrast aspoň 4,5:1 na pozadí, na kterém je, v obou režimech,
@@ -536,6 +538,9 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
       return { expand: list && getComputedStyle(list).animationName, link: getComputedStyle(document.querySelector('aside a')).transitionDuration };
     })()`);
     expect(motion.expand === 'site-expand', `rozbalená skupina v menu nemá animaci: ${motion.expand}`);
+    // Ukázka kódu, kterou Scalar vymění po přepnutí jazyka nebo stavového kódu, se prolne.
+    const codeAnimation = await page.evaluate(`getComputedStyle(document.querySelector('.scalar-code-block-pre > code')).animationName`);
+    expect(codeAnimation === 'site-fade', `ukázka kódu nemá animaci: ${codeAnimation}`);
     expect(motion.link !== '0s', 'odkazy v menu nemají plynulý přechod barvy');
 
     // Menu výchozího prostředí a procházení všech operací.
@@ -755,6 +760,8 @@ async function verifyBeforeScalar({ debugPort, url }) {
     await page.waitFor(`document.readyState === 'complete' && document.fonts.status === 'loaded'`, 'načtení stránky bez Scalaru');
     const font = await page.evaluate(`getComputedStyle(document.querySelector('.site-header')).fontFamily`);
     if (!/^"?Inter"?,/.test(font)) problems.push(`záhlaví má před spuštěním Scalaru písmo ${font}`);
+    const logoColor = await page.evaluate(`getComputedStyle(document.querySelector('.site-logo')).color`);
+    if (logoColor !== LOGO_COLORS['light-mode']) problems.push(`text loga má před spuštěním Scalaru barvu ${logoColor}`);
     if (await page.evaluate(`document.querySelector('.site-controls').checkVisibility({ visibilityProperty: true })`)) {
       problems.push('přepínače jsou vidět dřív, než Scalar nastaví barevný režim');
     }
@@ -808,7 +815,7 @@ try {
     for (const { slug } of inputs.environments) {
       expected[slug] = await expectedAddresses(join(outDir, language.dir, `openapi.${slug}.json`), slug);
     }
-    report(`${language.label} před spuštěním Scalaru`, await verifyBeforeScalar({ debugPort: chrome.port, url: pageUrl(PUBLIC_HOST, language) }), 'písmo Inter, přepínače skryté');
+    report(`${language.label} před spuštěním Scalaru`, await verifyBeforeScalar({ debugPort: chrome.port, url: pageUrl(PUBLIC_HOST, language) }), 'písmo Inter, logo v barvě světlého režimu, přepínače skryté');
     for (const host of ['127.0.0.1', PUBLIC_HOST]) {
       const url = pageUrl(host, language);
       const problems = await verifyPage({ debugPort: chrome.port, url, environments: inputs.environments, expected, labels });

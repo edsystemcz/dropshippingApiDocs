@@ -75,8 +75,10 @@ body:not(.light-mode, .dark-mode) .site-controls {
 /*
  * Text a dělicí čára loga mají fill:currentColor, značka eD a trojúhelník
  * zůstávají ve firemní růžové. Scalar dává třídu režimu na body a mění ji
- * bez načtení stránky.
+ * bez načtení stránky. Barva světlého režimu platí i před ní, jinak by logo
+ * jako odkaz bylo do spuštění Scalaru modré.
  */
+.site-logo,
 .light-mode .site-logo {
   color: #53565a;
 }
@@ -314,9 +316,11 @@ body:not(.light-mode, .dark-mode) .site-controls {
 
 /*
  * Pohyb: plynulé změny barev pod myší a vjezd prvků, které Scalar vkládá
- * do stránky (rozbalená skupina v menu, rozbalené odpovědi a vlastnosti,
- * obsah skupiny po „Zobrazit více“, menu na mobilu, nabídka stažení
- * dokumentu OpenAPI).
+ * do stránky (rozbalená skupina v menu, rozbalené odpovědi, vlastnosti
+ * a modely, obsah skupiny po „Zobrazit více“, menu na mobilu, vyskakovací
+ * nabídky, nabídka stažení dokumentu OpenAPI) a prolnutí obsahu, který
+ * Scalar vymění (ukázka kódu po přepnutí jazyka nebo stavového kódu,
+ * popis odpovědi).
  *
  * Pravidla jsou ve vrstvě site-motion. Ta je deklarovaná dřív než vrstvy
  * Scalaru (jeho styly se vkládají až při spuštění), takže má nejnižší
@@ -336,9 +340,20 @@ body:not(.light-mode, .dark-mode) .site-controls {
       transition-timing-function: ease;
     }
 
-    /* Rozbalená skupina v menu, odpověď, parametr nebo vlastnost schématu. */
-    .site-motion :where(aside li > ul, [id^='headlessui-disclosure-panel']) {
+    /* Rozbalená skupina v menu, odpověď, parametr, vlastnost schématu nebo model. */
+    .site-motion :where(aside li > ul, [id^='headlessui-disclosure-panel'], .collapsible-section-content) {
       animation: site-expand 220ms ease-out;
+    }
+
+    /* Vyskakovací nabídka, například výběr jazyka ukázky kódu nebo přepínač prostředí. */
+    .site-motion :where([id^='headlessui-popover-panel'], [id^='headlessui-listbox-options']) {
+      transform-origin: top;
+      animation: site-pop 160ms ease-out;
+    }
+
+    /* Obsah, který Scalar vymění: popis odpovědi, zvolený klient v úvodu (ukázka kódu je níže). */
+    .site-motion :where(.response-description-markdown > *, .selected-client) {
+      animation: site-fade 220ms ease-out;
     }
 
     /* Obsah skupiny po „Zobrazit více“. */
@@ -391,6 +406,12 @@ body:not(.light-mode, .dark-mode) .site-controls {
     }
   }
 
+  @keyframes site-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
   @keyframes site-fade-down {
     from {
       opacity: 0;
@@ -413,6 +434,17 @@ body:not(.light-mode, .dark-mode) .site-controls {
       opacity: 0;
       transform: scale(0.97);
     }
+  }
+}
+
+/*
+ * Ukázka kódu, kterou Scalar vymění po přepnutí jazyka nebo stavového kódu.
+ * Je mimo vrstvu site-motion: Scalar na kódu všechno resetuje
+ * (.scalar-app code.hljs), takže pravidlo potřebuje vyšší přednost.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .site-motion .scalar-app .scalar-code-block-pre > code.hljs {
+    animation: site-fade 220ms ease-out;
   }
 }
 
