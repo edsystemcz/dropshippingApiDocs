@@ -311,3 +311,112 @@ body:not(.light-mode, .dark-mode) .site-controls {
 .scalar-app .introduction-section .section-content > .flex:has(> .badge) {
   margin-bottom: 8px;
 }
+
+/*
+ * Pohyb: plynulé změny barev pod myší a vjezd prvků, které Scalar vkládá
+ * do stránky (rozbalená skupina v menu, rozbalené odpovědi a vlastnosti,
+ * obsah skupiny po „Zobrazit více“, menu na mobilu, nabídka stažení
+ * dokumentu OpenAPI).
+ *
+ * Pravidla jsou ve vrstvě site-motion. Ta je deklarovaná dřív než vrstvy
+ * Scalaru (jeho styly se vkládají až při spuštění), takže má nejnižší
+ * přednost: přechod, který si prvek nastavuje Scalar sám, zůstane.
+ *
+ * Zavírání Scalar neanimuje: zavřený obsah ze stránky hned odstraní, takže
+ * se animuje jen otevření. Vjezdy platí až po prvním vykreslení (třída
+ * site-motion od skriptu stránky), aby se stránka při načtení nehýbala.
+ * Rozbalení do výšky umí jen prohlížeče s interpolate-size, ostatní obsah
+ * jen prolnou s posunem. Kdo má v systému omezený pohyb, nevidí nic z toho.
+ */
+@layer site-motion {
+  @media (prefers-reduced-motion: no-preference) {
+    :where(.scalar-app, .site-header) :where(a, button, summary, [role='button'], [role='option']) {
+      transition-property: color, background-color, border-color, text-decoration-color, box-shadow, opacity;
+      transition-duration: 150ms;
+      transition-timing-function: ease;
+    }
+
+    /* Rozbalená skupina v menu, odpověď, parametr nebo vlastnost schématu. */
+    .site-motion :where(aside li > ul, [id^='headlessui-disclosure-panel']) {
+      animation: site-expand 220ms ease-out;
+    }
+
+    /* Obsah skupiny po „Zobrazit více“. */
+    .site-motion .tag-section-container .contents > * {
+      animation: site-fade-down 260ms ease-out;
+    }
+
+    /* Menu na mobilu vyjede od lišty dolů. */
+    .site-motion .t-doc__header aside {
+      animation: site-menu-in 240ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    /* Nabídka stažení: karta a druhé tlačítko se objeví, když na ni najede myš. */
+    .download-container.download-both:hover::before,
+    .download-container:has(:focus-visible)::before {
+      animation: site-pop 160ms ease-out;
+    }
+
+    .download-container:hover .download-button:nth-of-type(2),
+    .download-container:has(:focus-visible) .download-button:nth-of-type(2) {
+      animation: site-fade-down 200ms ease-out 40ms backwards;
+    }
+  }
+
+  @keyframes site-expand {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  /* Kde to prohlížeč umí, rozbalený obsah se roztáhne do výšky; stejnojmenná pozdější animace vyhrává. */
+  @supports (interpolate-size: allow-keywords) {
+    :root {
+      interpolate-size: allow-keywords;
+    }
+
+    /* Položka flexboxu by jinak nešla zmenšit pod výšku obsahu (min-height: auto). */
+    @keyframes site-expand {
+      from {
+        height: 0;
+        min-height: 0;
+        opacity: 0;
+        overflow: clip;
+      }
+      to {
+        min-height: 0;
+        overflow: clip;
+      }
+    }
+  }
+
+  @keyframes site-fade-down {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+
+  @keyframes site-menu-in {
+    from {
+      opacity: 0;
+      clip-path: inset(0 0 100% 0);
+    }
+    to {
+      clip-path: inset(0);
+    }
+  }
+
+  @keyframes site-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+}
+
+/* Při přepnutí barevného režimu se barvy mění najednou; animuje se jen ikona tlačítka. */
+.site-theme-switching *:not(.site-theme-moon, .site-theme-sun) {
+  transition: none !important;
+}

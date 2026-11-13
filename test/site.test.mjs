@@ -324,13 +324,13 @@ test('odpověď GET /products/catalog je pole stavů jobu', async () => {
 
 test('názvy operací jsou opravené a GET /Info má schválený název', async () => {
   const expected = {
-    '/Info': 'Vrátí stav a verzi služby.',
-    '/codelists/ProductIndex': 'Číselník produktových indexů.',
-    '/codelists/ProductBindingsType': 'Číselník typů příslušenství/náhrad.',
+    '/Info': 'Vrátí stav a verzi služby',
+    '/codelists/ProductIndex': 'Číselník produktových indexů',
+    '/codelists/ProductBindingsType': 'Číselník typů příslušenství/náhrad',
   };
   for (const [file, spec] of (await builtSpecs()).filter(([file]) => !file.startsWith('en/'))) {
     for (const [path, summary] of Object.entries(expected)) assert.equal(spec.paths[path].get.summary, summary, `${file}: GET ${path}`);
-    assert.equal(spec.paths['/products/catalog'].post.summary, 'Generování dropship katalogu produktů asynchronně.', file);
+    assert.equal(spec.paths['/products/catalog'].post.summary, 'Generování dropship katalogu produktů asynchronně', file);
   }
 });
 
@@ -433,7 +433,7 @@ test('build nehlásí žádný nepřeložený řetězec ani text bez protějšku
 
 test('anglická specifikace má přeložené názvy operací, popisy vlastností i popis zabezpečení', async () => {
   for (const [file, spec, environment] of (await builtSpecs()).filter(([file]) => file.startsWith('en/'))) {
-    assert.equal(spec.paths['/codelists/currencies'].get.summary, 'Currency codelist.', file);
+    assert.equal(spec.paths['/codelists/currencies'].get.summary, 'Currency codelist', file);
     assert.equal(spec.components.schemas.AddressExternalModel.properties.city.description, 'City.', file);
     assert.match(spec.components.securitySchemes.oauth2.description, new RegExp(`^OAuth 2\\.0 .*\`${environment.tokenUrl.replaceAll('.', '\\.')}\``), file);
   }

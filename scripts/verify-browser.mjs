@@ -22,6 +22,7 @@
 //     uprostřed sloupce); na mobilu je v liště zleva značka loga, název oddílu
 //     a tlačítko menu; tlačítko režimu po animaci ukazuje správnou ikonu,
 //   - před spuštěním Scalaru má záhlaví písmo Inter a přepínače nejsou vidět,
+//   - rozbalená skupina v menu má animaci a odkazy plynulý přechod barvy,
 //   - přepnutí režimu bez načtení stránky změní motiv i barvu textu loga,
 //   - text v barvě akcentu, v zelené a v barvách syntaxe ukázek
 //     kódu má kontrast aspoň 4,5:1 na pozadí, na kterém je, v obou režimech,
@@ -524,6 +525,18 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     // Celé slovo i s diakritikou: před a za popiskem není písmeno ani číslice.
     const forbiddenLabels = () =>
       page.evaluate(`${JSON.stringify(labels.forbidden)}.filter((label) => [...document.querySelectorAll('button, a')].some((element) => new RegExp('(?<![\\\\p{L}\\\\p{N}])' + label + '(?![\\\\p{L}\\\\p{N}])', 'u').test(${LABEL}(element))))`);
+
+    // Pohyb: rozbalená skupina v menu vjede a odkazy mění barvu plynule.
+    await page.waitFor(`document.documentElement.classList.contains('site-motion')`, 'zapnutí pohybu po vykreslení');
+    const motion = await page.evaluate(`(async () => {
+      const button = document.querySelector('aside li button[aria-expanded="false"]');
+      button.click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const list = button.closest('li').querySelector(':scope > ul');
+      return { expand: list && getComputedStyle(list).animationName, link: getComputedStyle(document.querySelector('aside a')).transitionDuration };
+    })()`);
+    expect(motion.expand === 'site-expand', `rozbalená skupina v menu nemá animaci: ${motion.expand}`);
+    expect(motion.link !== '0s', 'odkazy v menu nemají plynulý přechod barvy');
 
     // Menu výchozího prostředí a procházení všech operací.
     await openGroups();

@@ -44,6 +44,19 @@ async function assertValidOpenApi(validator, spec, label) {
 const withUnixLineEndings = (spec) => mapStrings(spec, (text) => text.replace(/\r\n?/g, '\n'));
 
 /**
+ * Název operace (`summary`) je ve specifikaci věta s tečkou na konci. Scalar
+ * z něj dělá nadpis, položku menu a název v liště, kde tečka působí divně,
+ * proto ji build odstraní; výpustka (`...`) zůstane. Děje se to až po
+ * překladu, takže klíče ve slovníku tečku mají. Upravuje předanou specifikaci.
+ */
+function withoutTrailingPeriods(spec) {
+  for (const { operation } of operations(spec)) {
+    if (typeof operation.summary === 'string') operation.summary = operation.summary.replace(/(?<!\.)\.$/, '');
+  }
+  return spec;
+}
+
+/**
  * Vypíše, kolik operací a skupin má text, a jako varování ty, které ho nemají:
  * skupiny na jednom řádku, operace po skupinách v pořadí menu.
  * @param {import('./content.mjs').Coverage} coverage
@@ -234,7 +247,7 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
     const inserted = insertTexts({ specs: languageSpecs, environments, texts, language: language.code, log });
     for (const [slug, withTexts] of inserted.specs) {
       const label = versionLabel(language.code, slug);
-      const spec = withUnixLineEndings(withTexts);
+      const spec = withoutTrailingPeriods(withUnixLineEndings(withTexts));
       await assertValidOpenApi(validator, spec, label);
       files.set(join(language.dir, specFileName(slug)), JSON.stringify(spec, null, 2));
       coverages.set(label, inserted.coverage.get(slug));

@@ -82,16 +82,23 @@
       // Stisknuté tlačítko znamená tmavý režim; ikona se mění podle třídy,
       // kterou Scalar dává na body.
       const SCALAR_THEME_TOGGLE = '.darklight-reference button[aria-pressed]:not([data-theme-toggle])';
+      // Během přepnutí jsou ostatní přechody vypnuté (site-theme-switching),
+      // aby se barvy stránky změnily najednou.
       document.addEventListener('click', (event) => {
-        if (event.target.closest?.('[data-theme-toggle]')) document.querySelector(SCALAR_THEME_TOGGLE)?.click();
+        if (!event.target.closest?.('[data-theme-toggle]')) return;
+        document.documentElement.classList.add('site-theme-switching');
+        document.querySelector(SCALAR_THEME_TOGGLE)?.click();
+        setTimeout(() => document.documentElement.classList.remove('site-theme-switching'), 100);
       });
       // Animace ikon se zapne až po prvním nastavení režimu, aby se ikona
       // nehýbala při načtení stránky.
       const syncThemeButtons = () => {
         const dark = String(document.body.classList.contains('dark-mode'));
         for (const button of document.querySelectorAll('[data-theme-toggle]')) button.setAttribute('aria-pressed', dark);
-        if (document.body.classList.contains('light-mode') || dark === 'true') {
+        if ((document.body.classList.contains('light-mode') || dark === 'true') && !document.documentElement.classList.contains('site-theme-ready')) {
           requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add('site-theme-ready')));
+          // Vjezdy prvků (site/site.css, vrstva site-motion) až po prvním vykreslení.
+          setTimeout(() => document.documentElement.classList.add('site-motion'), 1000);
         }
       };
       new MutationObserver(syncThemeButtons).observe(document.body, { attributes: true, attributeFilter: ['class'] });

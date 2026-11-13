@@ -127,7 +127,7 @@ test('specifikace prostředí má v titulku název prostředí a číslo buildu 
 test('operace ze zdrojové specifikace přejdou do výstupu beze změny', async () => {
   const paths = {
     '/Info': { get: operation('Info') },
-    '/codelists/ProductCategory': { get: operation('Codelist', { summary: 'Číselník kategorií.' }) },
+    '/codelists/ProductCategory': { get: operation('Codelist', { summary: 'Číselník kategorií' }) },
     '/b2b/orders': { get: operation('OrdersB2B'), post: operation('OrdersB2B') },
   };
   const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths);
@@ -321,7 +321,7 @@ test('doplněk z overlay se sloučí do operace v každém prostředí a zbytek 
     assert.deepEqual((await readJson(inputs.outDir, `openapi.${slug}.json`)).paths['/codelists/ProductIndex'].get, {
       tags: ['Codelist'],
       responses: { 200: { description: 'Success' } },
-      summary: 'Číselník produktových indexů.',
+      summary: 'Číselník produktových indexů',
       operationId: 'GetProductListIndexAsync',
     });
   }
@@ -337,7 +337,7 @@ test('soubory overlay se slučují v abecedním pořadí, pozdější doplněk v
 
   await run(inputs);
 
-  assert.equal((await readJson(inputs.outDir, 'openapi.prod.json')).paths['/codelists/ProductIndex'].get.summary, 'Ze souboru products.');
+  assert.equal((await readJson(inputs.outDir, 'openapi.prod.json')).paths['/codelists/ProductIndex'].get.summary, 'Ze souboru products');
 });
 
 test('null v doplňku klíč odstraní, takže odkaz na schéma jde nahradit polem', async () => {
@@ -380,7 +380,7 @@ test('doplněk pro operaci, která v prostředí není, se tam přeskočí a jin
   const { output } = await run(inputs);
 
   assert.deepEqual(Object.keys((await readJson(inputs.outDir, 'openapi.prod.json')).paths), ['/Info']);
-  assert.equal((await readJson(inputs.outDir, 'openapi.test.json')).paths['/codelists/ProductIndex'].get.summary, 'Číselník produktových indexů.');
+  assert.equal((await readJson(inputs.outDir, 'openapi.test.json')).paths['/codelists/ProductIndex'].get.summary, 'Číselník produktových indexů');
   assert.match(output, /^INFO PROD: .*overlay\/base\.json.*GET \/codelists\/ProductIndex/m);
 });
 
@@ -404,7 +404,7 @@ test('doplněk pro operaci, která není v žádném prostředí, shodí build a
 
 const downloadOperation = {
   tags: ['Products'],
-  summary: 'Stažení katalogového souboru.',
+  summary: 'Stažení katalogového souboru',
   parameters: [{ name: 'fileName', in: 'path', required: true, schema: { type: 'string' } }],
   responses: { 200: { description: 'Katalogový soubor.' } },
 };
@@ -988,7 +988,7 @@ test('konce řádků ve výsledné specifikaci jsou jednotné, ať přišly z te
   const prod = await readJson(inputs.outDir, 'openapi.prod.json');
   assert.equal(prod.info.description, '# Úvod\n\nText z Windows.');
   assert.equal(prod.paths['/Info'].get.description, 'První řádek.\nDruhý řádek.\nTřetí řádek.');
-  assert.equal(prod.paths['/Info'].get.summary, 'Stav služby.\nDruhý řádek.');
+  assert.equal(prod.paths['/Info'].get.summary, 'Stav služby.\nDruhý řádek');
   assert.equal(prod.tags[0]['x-displayName'], 'Stav\nslužby');
 });
 
@@ -1381,14 +1381,14 @@ test('anglická verze má řetězce ze specifikace i z overlay přeložené podl
   for (const slug of ['prod', 'test']) {
     const en = await readJson(inputs.outDir, 'en', `openapi.${slug}.json`);
     const countries = en.paths['/codelists/countries'].get;
-    assert.equal(countries.summary, 'Country codelist.');
+    assert.equal(countries.summary, 'Country codelist');
     assert.equal(countries.parameters[0].description, 'Language\nof names.');
     assert.equal(countries.responses[200].description, 'Success');
     assert.equal(en.components.schemas.CountryModel.description, 'Country.');
     assert.equal(en.components.schemas.CountryModel.properties.name.description, 'Country name.');
     assert.deepEqual(en.tags, [{ name: 'Info', 'x-displayName': 'Service status' }, { name: 'Codelist', 'x-displayName': 'Codelists' }]);
     const cs = await readJson(inputs.outDir, `openapi.${slug}.json`);
-    assert.equal(cs.paths['/codelists/countries'].get.summary, 'Číselník zemí.');
+    assert.equal(cs.paths['/codelists/countries'].get.summary, 'Číselník zemí');
     assert.deepEqual(cs.tags, [{ name: 'Info', 'x-displayName': 'Stav služby' }, { name: 'Codelist', 'x-displayName': 'Číselníky' }]);
   }
 });
@@ -1405,8 +1405,8 @@ test('nový nebo změněný řetězec zůstane česky a build ho vypíše jako n
 
   const { output } = await run(inputs);
 
-  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.prod.json')).paths['/Info'].get.summary, 'Returns the service status.');
-  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.test.json')).paths['/Info'].get.summary, 'Vrátí stav a verzi služby.');
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.prod.json')).paths['/Info'].get.summary, 'Returns the service status');
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.test.json')).paths['/Info'].get.summary, 'Vrátí stav a verzi služby');
   assert.match(
     output,
     /^WARN en: nepřeložené řetězce ze specifikace \(1\), zůstaly česky; doplňte je do i18n\/en\.json:\n {2}"Vrátí stav a verzi služby\."  \(paths › \/Info › get › summary, jen TEST\)$/m,
@@ -1424,8 +1424,8 @@ test('překlad se zástupným symbolem sedí na řetězec z overlay v každém p
 
   const { output } = await run(inputs);
 
-  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.prod.json')).paths['/Info'].get.summary, 'The token is issued by https://auth.example.cz/oauth/token.');
-  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.test.json')).paths['/Info'].get.summary, 'The token is issued by https://auth-test.example.cz/oauth/token.');
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.prod.json')).paths['/Info'].get.summary, 'The token is issued by https://auth.example.cz/oauth/token');
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.test.json')).paths['/Info'].get.summary, 'The token is issued by https://auth-test.example.cz/oauth/token');
   assert.doesNotMatch(output, /nepřeložen|nic nepřekládají/);
 });
 
@@ -1539,4 +1539,28 @@ test('tlačítko barevného režimu má popisek v jazyce verze', async () => {
 
   assert.equal(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), '<button aria-label="Tmavý režim"></button>');
   assert.equal(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), '<button aria-label="Dark mode"></button>');
+});
+
+test('název operace nemá na konci tečku v žádném jazyce, výpustka a tečka uvnitř zůstanou', async () => {
+  const paths = {
+    '/Info': { get: operation('Info', { summary: 'Vrátí stav služby.' }) },
+    '/codelists/countries': { get: operation('Codelist', { summary: 'Číselník zemí, např. CZ…' }), post: operation('Codelist', { summary: 'Import 1.2 dat...' }) },
+  };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths, {
+    schemas: { Country: { type: 'object', description: 'Země.' } },
+  });
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    translations: { 'Vrátí stav služby.': 'Returns the service status.', 'Země.': 'Country.' },
+  });
+
+  await run(inputs);
+
+  for (const [dir, info, schema] of [['', 'Vrátí stav služby', 'Země.'], ['en', 'Returns the service status', 'Country.']]) {
+    const built = await readJson(inputs.outDir, dir, 'openapi.prod.json');
+    assert.equal(built.paths['/Info'].get.summary, info);
+    assert.equal(built.paths['/codelists/countries'].get.summary, 'Číselník zemí, např. CZ…');
+    assert.equal(built.paths['/codelists/countries'].post.summary, 'Import 1.2 dat...');
+    assert.equal(built.components.schemas.Country.description, schema);
+  }
 });
