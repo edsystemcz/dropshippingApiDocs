@@ -979,7 +979,7 @@ test('odkaz, který nikam nevede, shodí build a hlášení vyjmenuje všechny t
     content: {
       'cs/intro/10-uvod.md': '# Úvod\n\n[průvodce](30-synchronizace.md), [typy](30-synchronizace-katalogu.md#typy-katalogu), [zadání](../../../ZADANI.md).\n',
       'cs/intro/30-synchronizace-katalogu.md': GUIDE,
-      'cs/operations/get__Info.md': 'Viz [stav jobu](get__products_catalog.md) a [chyby](#časté-chyby).\n',
+      'cs/operations/get__Info.md': 'Viz [stav jobu](get__products_katalog.md) a [chyby](#časté-chyby).\n',
     },
   });
 
@@ -987,7 +987,7 @@ test('odkaz, který nikam nevede, shodí build a hlášení vyjmenuje všechny t
     assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz 30-synchronizace\.md/);
     assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz 30-synchronizace-katalogu\.md#typy-katalogu/);
     assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/\.\.\/\.\.\/ZADANI\.md/);
-    assert.match(error.message, /content\/cs\/operations\/get__Info\.md: odkaz get__products_catalog\.md/);
+    assert.match(error.message, /content\/cs\/operations\/get__Info\.md: odkaz get__products_katalog\.md/);
     assert.match(error.message, /content\/cs\/operations\/get__Info\.md: odkaz #časté-chyby/);
     return true;
   });
@@ -1041,6 +1041,70 @@ test('odkaz na operaci, která v prostředí není, tam zůstane jako prostý te
     '# Úvod\n\nNově: [produktové indexy](#test/tag/codelist/GET/codelists/ProductIndex) a [číselníky](#test/tag/codelist).',
   );
   assert.match(output, /^INFO cs PROD: content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/operations\/get__codelists_ProductIndex\.md.*bez odkazu/m);
+});
+
+test('odkaz na soubor operace nebo skupiny, která text ještě nemá, vede na operaci nebo skupinu', async () => {
+  const inputs = await project({
+    specs: { prod: catalogSpec(), test: catalogSpec() },
+    content: {
+      'cs/intro/10-uvod.md':
+        '# Úvod\n\n[založení jobu](../operations/post__products_catalog.md), [kategorie](../operations/get__codelists_ProductCategory.md) a [katalog](../tags/Products.md).\n',
+    },
+  });
+
+  const { output } = await run(inputs);
+
+  assert.equal(
+    (await readJson(inputs.outDir, 'openapi.prod.json')).info.description,
+    '# Úvod\n\n[založení jobu](#prod/tag/products/POST/products/catalog), [kategorie](#prod/tag/codelist/GET/codelists/ProductCategory) a [katalog](#prod/tag/products).',
+  );
+  assert.match((await readJson(inputs.outDir, 'openapi.test.json')).info.description, /\[katalog\]\(#test\/tag\/products\)/);
+  assert.match(output, /^WARN cs PROD: operace bez textu:\n(.*\n)*? {4}POST \/products\/catalog$/m);
+});
+
+test('odkaz na operaci bez textu, která je jen v jednom prostředí, zůstane jinde jako prostý text', async () => {
+  const inputs = await project({
+    specs: {
+      prod: sourceSpec('Dropshipping API Gateway service, build: 1.1.122'),
+      test: sourceSpec('Dropshipping API Gateway service, build: 1.1.123', twoOperations()),
+    },
+    content: { 'cs/intro/10-uvod.md': '# Úvod\n\nNově: [produktové indexy](../operations/get__codelists_ProductIndex.md).\n' },
+  });
+
+  const { output } = await run(inputs);
+
+  assert.equal((await readJson(inputs.outDir, 'openapi.prod.json')).info.description, '# Úvod\n\nNově: produktové indexy.');
+  assert.equal(
+    (await readJson(inputs.outDir, 'openapi.test.json')).info.description,
+    '# Úvod\n\nNově: [produktové indexy](#test/tag/codelist/GET/codelists/ProductIndex).',
+  );
+  assert.match(output, /^INFO cs PROD: content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/operations\/get__codelists_ProductIndex\.md.*bez odkazu/m);
+});
+
+test('odkaz na soubor operace, která neexistuje, shodí build; u jiné velikosti písmen hlášení poradí správný název', async () => {
+  const inputs = await project({
+    specs: { prod: catalogSpec(), test: catalogSpec() },
+    content: {
+      'cs/intro/10-uvod.md':
+        '# Úvod\n\n[zrušení](../operations/delete__products_catalog.md), [kategorie](../operations/get__codelists_productcategory.md), [objednávky](../tags/Orders.md).\n',
+    },
+  });
+
+  await assert.rejects(run(inputs), (error) => {
+    assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/operations\/delete__products_catalog\.md/);
+    assert.match(error.message, /odkaz \.\.\/operations\/get__codelists_productcategory\.md.*get__codelists_ProductCategory\.md/);
+    assert.match(error.message, /content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/tags\/Orders\.md/);
+    return true;
+  });
+});
+
+test('odkaz na nadpis v popisu operace, který ještě není napsaný, shodí build', async () => {
+  const inputs = await project({
+    specs: { prod: catalogSpec(), test: catalogSpec() },
+    content: { 'cs/intro/10-uvod.md': '# Úvod\n\n[chyby](../operations/post__products_catalog.md#časté-chyby).\n' },
+  });
+
+  await assert.rejects(run(inputs), /content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/operations\/post__products_catalog\.md#časté-chyby.*text zatím nemá/);
 });
 
 test('stejný nadpis ve dvou kapitolách dostane adresu s pořadím, jak ji přiděluje Scalar', async () => {
@@ -1178,7 +1242,7 @@ test('jazyková verze, kde mají text všechny operace i skupiny, je ve výpisu 
   assert.match(output, /^WARN en TEST: operace bez textu:\n {2}Info\n {4}GET \/Info$/m);
 });
 
-test('operace, jejichž cesty se liší jen lomítkem a podtržítkem, se počítají obě a popis se stejným názvem souboru shodí build', async () => {
+test('operace, jejichž cesty se liší jen lomítkem a podtržítkem, se počítají obě; popis ani odkaz se stejným názvem souboru přiřadit nejde a shodí build', async () => {
   const paths = { '/a/b': { get: operation('Info') }, '/a_b': { get: operation('Info') } };
   const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths);
   const withoutText = await project({ specs: { prod: spec, test: spec } });
@@ -1190,6 +1254,9 @@ test('operace, jejichž cesty se liší jen lomítkem a podtržítkem, se počí
 
   const withText = await project({ specs: { prod: spec, test: spec }, content: { 'cs/operations/get__a_b.md': 'Popis.\n' } });
   await assert.rejects(run(withText), /content\/cs\/operations\/get__a_b\.md.*GET \/a\/b.*GET \/a_b/);
+
+  const withLink = await project({ specs: { prod: spec, test: spec }, content: { 'cs/intro/10-uvod.md': '# Úvod\n\n[operace](../operations/get__a_b.md)\n' } });
+  await assert.rejects(run(withLink), /content\/cs\/intro\/10-uvod\.md: odkaz \.\.\/operations\/get__a_b\.md.*GET \/a\/b.*GET \/a_b/);
 });
 
 test('skupina, která je u operace uvedená až jako druhá, se do pokrytí počítá také', async () => {

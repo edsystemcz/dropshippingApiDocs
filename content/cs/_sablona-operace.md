@@ -5,7 +5,7 @@ Jak šablonu použít:
 1. Text pod čarou zkopírujte do nového souboru ve složce `operations/`. Soubor pojmenujte podle metody a cesty operace: metoda malými písmeny, dvě podtržítka a cesta s podtržítky místo lomítek, se stejnou velikostí písmen jako ve specifikaci. Například `GET /codelists/ProductCategory` má popis v souboru `get__codelists_ProductCategory.md`.
 2. V každém oddílu nahraďte nápovědu vlastním textem. Pořadí oddílů neměňte; oddíl, ke kterému není co říct, smažte i s nadpisem.
 3. Adresu API pište jako `{{baseUrl}}` a adresu pro získání tokenu jako `{{tokenUrl}}`. Build doplní hodnotu podle prostředí.
-4. Na jiný text odkazujte jeho souborem, například `[úvod](../intro/10-uvod.md)`. Build odkaz převede na adresu na webu.
+4. Na jiný text odkazujte jeho souborem, například `[úvod](../intro/10-uvod.md)`. Build odkaz převede na adresu na webu. Stejně se odkazuje na operaci, která popis ještě nemá: souborem, ve kterém její popis jednou bude, například `[založení objednávky](post__b2c_orders.md)`.
 
 Parametry a tvar odpovědi neopisujte. Web je pod popisem ukazuje přímo ze specifikace.
 
