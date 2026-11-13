@@ -540,9 +540,6 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
       return { expand: list && getComputedStyle(list).animationName, link: getComputedStyle(document.querySelector('aside a')).transitionDuration };
     })()`);
     expect(motion.expand === 'site-expand', `rozbalená skupina v menu nemá animaci: ${motion.expand}`);
-    // Ukázka kódu, kterou Scalar vymění po přepnutí jazyka nebo stavového kódu, se prolne.
-    const codeAnimation = await page.evaluate(`getComputedStyle(document.querySelector('.scalar-code-block-pre > code')).animationName`);
-    expect(codeAnimation === 'site-fade', `ukázka kódu nemá animaci: ${codeAnimation}`);
     expect(motion.link !== '0s', 'odkazy v menu nemají plynulý přechod barvy');
 
     // Menu výchozího prostředí a procházení všech operací.
@@ -561,6 +558,10 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
       if (!(await page.evaluate(`(${TARGET_TOP}) === null || ${belowTopBars(TARGET_TOP)}`))) coveredTargets.push(href);
     }
     expect(coveredTargets.length === 0, `záhlaví zakrývá cíl odkazu: ${coveredTargets.join(', ')}`);
+    // Ukázka kódu, kterou Scalar vymění po přepnutí jazyka nebo stavového kódu, se prolne.
+    // Ukázky Scalar vykresluje až u zobrazené operace; po načtení může být vidět jen úvod.
+    const codeAnimation = await page.evaluate(`(() => { const code = document.querySelector('.scalar-code-block-pre > code'); return code && getComputedStyle(code).animationName; })()`);
+    expect(codeAnimation === 'site-fade', `ukázka kódu nemá animaci: ${codeAnimation ?? 'na stránce není žádná ukázka kódu'}`);
     await expectContrast('po procházení menu');
     await page.evaluate('window.scrollTo(0, document.documentElement.scrollHeight)');
     await sleep(500);
