@@ -6,8 +6,13 @@
     <title>{{pageTitle}}</title>
     <link rel="icon" type="image/svg+xml" href="{{rootPath}}assets/favicon.svg">
     <link rel="stylesheet" href="{{rootPath}}assets/fonts/fonts.css">
+    <link rel="stylesheet" href="{{rootPath}}assets/site.css">
+    {{themeStyles}}
   </head>
   <body>
+    <header class="site-header" data-scalar-scroll-header>
+      <a class="site-logo" href="./" aria-label="eD system">{{logo}}</a>
+    </header>
     <div id="app"></div>
     <script src="{{rootPath}}assets/scalar/standalone.js"></script>
     <script>
@@ -17,6 +22,8 @@
       // osobních údajů. Po změně nastavení nebo verze Scalaru obojí ověř znovu.
       Scalar.createApiReference('#app', {
         sources: {{sources}},
+        // Vzhled určuje site/theme.css; bez něj zůstanou výchozí barvy Scalaru.
+        theme: 'none',
         // Písma jsou přibalená (assets/fonts), z CDN Scalaru se nenačítají.
         withDefaultFonts: false,
         // Volání API z prohlížeče bez CORS nefunguje (docs/adr/0003).
@@ -29,6 +36,20 @@
         telemetry: false,
         // Záměrně chybí: proxyUrl (proxy by posílala tokeny přes cizí server),
         // mcp a defaultHttpClient (zapsal by do úložiště hned při načtení).
+      });
+
+      // Logo vede na úvod právě zvoleného prostředí bez načtení stránky. Úvod
+      // (titulek a texty úvodu) má ve Scalaru adresu <prostředí>/description/introduction;
+      // prostředí je první část adresy za #. Když úvod nenajde, odkaz načte
+      // stránku znovu od začátku.
+      document.querySelector('.site-logo').addEventListener('click', (event) => {
+        const environment = decodeURIComponent(location.hash.slice(1)).split('/')[0];
+        const intro = environment && document.getElementById(`${environment}/description/introduction`);
+        if (!intro) return;
+        event.preventDefault();
+        // Stejná adresa by Scalar neposunula; přes adresu prostředí ji pozná jako změnu.
+        if (decodeURIComponent(location.hash.slice(1)) === intro.id) history.replaceState(null, '', `#${environment}`);
+        location.hash = intro.id;
       });
     </script>
   </body>

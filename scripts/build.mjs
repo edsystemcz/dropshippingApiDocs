@@ -1,6 +1,7 @@
 // Sestaví web ze zdrojových specifikací a overlay: pro každý jazyk a každé
 // prostředí zapíše specifikaci a stránku se Scalarem do dist/ (docs/adr/0001, 0004).
 
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -85,8 +86,25 @@ const scalarSources = (environments) =>
   }));
 
 /**
- * Výstup vzniká celý znovu: obsahuje jen specifikace, stránky a soubory
- * vyjmenované v `assets`, nic z minulého buildu ani nic dalšího ze zdrojů.
+ * Logo pro vložení do stránky jako inline SVG: přes <img> by text loga
+ * s `fill:currentColor` barvu stránky nepřevzal. Deklarace XML, typ dokumentu
+ * a jmenné prostory z grafického editoru HTML nepotřebuje; adresy jmenných
+ * prostorů by navíc vypadaly jako odkazy na cizí domény.
+ */
+const inlineSvg = (svg) =>
+  svg
+    .replace(/^\s*<\?xml[^>]*\?>\s*/, '')
+    .replace(/^<!DOCTYPE[^>]*>\s*/i, '')
+    .replace(/\s+xmlns(?::[\w-]+)?="[^"]*"/g, '')
+    .trim();
+
+/** Kam build zapíše motiv. */
+const THEME_FILE = 'assets/theme.css';
+
+/**
+ * Výstup vzniká celý znovu: obsahuje jen specifikace, stránky, soubory
+ * vyjmenované v `assets` a motiv, nic z minulého buildu ani nic dalšího
+ * ze zdrojů.
  *
  * Specifikace prostředí vzniká ze zdrojové specifikace, doplňků z overlay
  * (scripts/overlay.mjs) a textů v jazyce verze (scripts/content.mjs) a musí
@@ -98,7 +116,12 @@ const scalarSources = (environments) =>
  *
  * Šablona stránky `index.html` v `siteDir` smí obsahovat tyto zástupné symboly:
  * `{{lang}}` (jazyk verze), `{{pageTitle}}` (titulek stránky), `{{rootPath}}`
- * (cesta ke společným souborům) a `{{sources}}` (prostředí pro přepínač Scalaru).
+ * (cesta ke společným souborům), `{{sources}}` (prostředí pro přepínač Scalaru),
+ * `{{logo}}` (logo jako inline SVG) a `{{themeStyles}}` (odkaz na motiv,
+ * nebo nic).
+ *
+ * Motiv je nepovinný: když ho build dostane, zkopíruje ho do `assets/theme.css`
+ * a stránky na něj odkazují. Bez něj má web výchozí vzhled Scalaru.
  *
  * @param {object} options
  * @param {{slug: string, title: string, default?: boolean, baseUrl: string, tokenUrl: string, notice?: Record<string, string>}[]} options.environments
@@ -109,10 +132,14 @@ const scalarSources = (environments) =>
  * @param {string} options.siteDir složka se šablonou stránky
  * @param {string} options.outDir výstupní složka; build ji před zápisem smaže
  * @param {{from: string, to: string}[]} options.assets společné soubory: odkud a kam ve výstupu
+ * @param {string} options.logo soubor s logem (SVG)
+ * @param {string} [options.theme] soubor s motivem (CSS)
  * @param {{info: (message: string) => void, warn: (message: string) => void}} [options.log]
  */
-export async function build({ environments, specDir, overlayDir, contentDir, siteDir, outDir, assets, log = console }) {
+export async function build({ environments, specDir, overlayDir, contentDir, siteDir, outDir, assets, logo: logoPath, theme: themePath, log = console }) {
   const template = await readFile(join(siteDir, 'index.html'), 'utf8');
+  const logo = inlineSvg(await readFile(logoPath, 'utf8'));
+  const theme = themePath === undefined ? null : await readFile(themePath);
   const sources = scriptJson(scalarSources(environments));
   const overlays = await readOverlays(overlayDir);
   const titled = new Map();
@@ -143,8 +170,10 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
       coverages.set(label, inserted.coverage.get(slug));
     }
   }
+  if (theme !== null) files.set(THEME_FILE, theme);
   for (const { code, dir, rootPath, pageTitle } of LANGUAGES) {
-    files.set(join(dir, 'index.html'), fillPlaceholders(template, { lang: code, pageTitle, rootPath, sources }, 'šablona stránky'));
+    const themeStyles = theme === null ? '' : `<link rel="stylesheet" href="${rootPath}${THEME_FILE}">`;
+    files.set(join(dir, 'index.html'), fillPlaceholders(template, { lang: code, pageTitle, rootPath, sources, logo, themeStyles }, 'šablona stránky'));
   }
   for (const { from, to } of assets) files.set(to, await readFile(from));
 
@@ -163,7 +192,7 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
 /**
  * Společné soubory webu. Scalar a písma jsou zafixované závislosti a build je
  * kopíruje do webu, aby stránka nenačítala nic z cizích domén (docs/adr/0002).
- * Co tu není vyjmenované, se na web nedostane.
+ * Co tu ani v `siteInputs` není vyjmenované, se na web nedostane.
  */
 const siteAssets = (repoRoot) => {
   const inter = join(repoRoot, 'node_modules/@fontsource-variable/inter');
@@ -171,6 +200,7 @@ const siteAssets = (repoRoot) => {
   return [
     { from: join(repoRoot, 'node_modules/@scalar/api-reference/dist/browser/standalone.js'), to: 'assets/scalar/standalone.js' },
     { from: join(repoRoot, 'site/assets/favicon.svg'), to: 'assets/favicon.svg' },
+    { from: join(repoRoot, 'site/site.css'), to: 'assets/site.css' },
     { from: join(repoRoot, 'site/fonts.css'), to: 'assets/fonts/fonts.css' },
     // Vlastní výřez Interu se symboly kláves, viz site/fonts.css.
     { from: join(repoRoot, 'site/assets/inter-symbols.woff2'), to: 'assets/fonts/inter-symbols.woff2' },
@@ -185,15 +215,24 @@ const siteAssets = (repoRoot) => {
   ];
 };
 
-/** Vstupy buildu pro toto repo; výstupní složku určuje volající. */
-export const siteInputs = async (repoRoot) => ({
-  environments: JSON.parse(await readFile(join(repoRoot, 'environments.json'), 'utf8')),
-  specDir: join(repoRoot, 'spec'),
-  overlayDir: join(repoRoot, 'overlay'),
-  contentDir: join(repoRoot, 'content'),
-  siteDir: join(repoRoot, 'site'),
-  assets: siteAssets(repoRoot),
-});
+/**
+ * Vstupy buildu pro toto repo; výstupní složku určuje volající.
+ * Motiv site/theme.css je pokus (ZADANI část 12): když soubor smažeš, web
+ * dostane výchozí vzhled Scalaru.
+ */
+export const siteInputs = async (repoRoot) => {
+  const theme = join(repoRoot, 'site/theme.css');
+  return {
+    environments: JSON.parse(await readFile(join(repoRoot, 'environments.json'), 'utf8')),
+    specDir: join(repoRoot, 'spec'),
+    overlayDir: join(repoRoot, 'overlay'),
+    contentDir: join(repoRoot, 'content'),
+    siteDir: join(repoRoot, 'site'),
+    assets: siteAssets(repoRoot),
+    logo: join(repoRoot, 'site/assets/logo.svg'),
+    ...(existsSync(theme) && { theme }),
+  };
+};
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');

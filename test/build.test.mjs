@@ -34,8 +34,14 @@ const sourceSpec = (title, paths = { '/Info': { get: operation('Info') } }, comp
 
 const TEMPLATE = '<html lang="{{lang}}"><title>{{pageTitle}}</title><script src="{{rootPath}}assets/app.js"></script><script>start({{sources}})</script></html>';
 
-/** Založí zdrojové složky s daným obsahem a vrátí vstupy pro build. */
-async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS }) {
+/** Logo, jak ho uloží grafický editor: s deklarací XML, typem dokumentu a jmennými prostory. */
+const LOGO = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M0 0h10v10z" style="fill:currentColor"/></svg>\n';
+
+/**
+ * Založí zdrojové složky s daným obsahem a vrátí vstupy pro build.
+ * `theme` je obsah souboru s motivem; bez něj build žádný motiv nedostane.
+ */
+async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, theme }) {
   const dir = await mkdtemp(join(tmpdir(), 'build-'));
   const specDir = join(dir, 'spec');
   const overlayDir = join(dir, 'overlay');
@@ -55,13 +61,25 @@ async function project({ specs, overlays = {}, template = TEMPLATE, assets = {},
     await writeFile(join(overlayDir, name), typeof overlay === 'string' ? overlay : JSON.stringify(overlay));
   }
   await writeFile(join(siteDir, 'index.html'), template);
+  await writeFile(join(dir, 'logo.svg'), logo);
+  if (theme !== undefined) await writeFile(join(dir, 'theme.css'), theme);
   const assetList = [];
   for (const [to, bytes] of Object.entries(assets)) {
     const from = join(dir, `asset-${assetList.length}`);
     await writeFile(from, bytes);
     assetList.push({ from, to });
   }
-  return { environments, specDir, overlayDir, contentDir, siteDir, outDir: join(dir, 'dist'), assets: assetList };
+  return {
+    environments,
+    specDir,
+    overlayDir,
+    contentDir,
+    siteDir,
+    outDir: join(dir, 'dist'),
+    assets: assetList,
+    logo: join(dir, 'logo.svg'),
+    ...(theme !== undefined && { theme: join(dir, 'theme.css') }),
+  };
 }
 
 async function run(inputs) {
@@ -170,6 +188,41 @@ test('titulek stránky je v jazyce dané verze', async () => {
 
   assert.match(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), /<title>Dropshipping API dokumentace \| eD system<\/title>/);
   assert.match(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), /<title>Dropshipping API documentation \| eD system<\/title>/);
+});
+
+test('logo se vloží do stránky jako SVG bez deklarace XML, typu dokumentu a jmenných prostorů, aby převzalo barvu textu', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), template: '<html lang="{{lang}}"><a href="#">{{logo}}</a></html>' });
+
+  await run(inputs);
+
+  for (const dir of [inputs.outDir, join(inputs.outDir, 'en')]) {
+    assert.equal(
+      await readFile(join(dir, 'index.html'), 'utf8'),
+      `<html lang="${dir === inputs.outDir ? 'cs' : 'en'}"><a href="#"><svg viewBox="0 0 10 10"><path d="M0 0h10v10z" style="fill:currentColor"/></svg></a></html>`,
+    );
+  }
+});
+
+const THEMED_TEMPLATE = '<head>{{themeStyles}}</head>';
+
+test('motiv se zkopíruje na web a stránky na něj odkazují relativně', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), template: THEMED_TEMPLATE, theme: '.light-mode { --scalar-color-1: #4c4f69; }' });
+
+  await run(inputs);
+
+  assert.equal(await readFile(join(inputs.outDir, 'assets', 'theme.css'), 'utf8'), '.light-mode { --scalar-color-1: #4c4f69; }');
+  assert.equal(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), '<head><link rel="stylesheet" href="assets/theme.css"></head>');
+  assert.equal(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), '<head><link rel="stylesheet" href="../assets/theme.css"></head>');
+});
+
+test('bez motivu build projde a stránky žádný motiv nenačítají', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), template: THEMED_TEMPLATE });
+
+  await run(inputs);
+
+  assert.ok(!(await listFiles(inputs.outDir)).includes('assets/theme.css'));
+  assert.equal(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), '<head></head>');
+  assert.equal(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), '<head></head>');
 });
 
 test('neznámý zástupný symbol v šabloně stránky shodí build', async () => {
