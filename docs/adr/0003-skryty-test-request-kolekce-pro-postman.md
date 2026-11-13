@@ -4,5 +4,5 @@
 
 ## Důsledky
 
-- Se skrytým tlačítkem zmizí i panel pro zadání tokenu. Návštěvník na webu žádný token nezadává a na tom stojí znění zásad ochrany osobních údajů.
-- Pokud backend někdy začne hlavičky CORS posílat, lze rozhodnutí otevřít znovu; spolu s tlačítkem je pak potřeba upravit i zásady.
+- Se skrytým tlačítkem zmizí i panel pro zadání tokenu. Návštěvník na webu žádný token nezadává, na tom stojí i to, že web nemá vlastní zásady ochrany osobních údajů (ADR 0006).
+- Pokud backend někdy začne hlavičky CORS posílat, lze rozhodnutí otevřít znovu; spolu s tlačítkem je pak potřeba znovu posoudit i ADR 0006.

@@ -26,8 +26,8 @@
     <script>
       // Nastavení ověřené na verzi Scalaru 1.78.1. Stránka nesmí volat žádnou
       // cizí doménu (docs/adr/0002) a do úložiště prohlížeče smí zapsat jen
-      // barevný režim a jazyk ukázek kódu, na tom stojí zásady ochrany
-      // osobních údajů. Po změně nastavení nebo verze Scalaru obojí ověř znovu.
+      // barevný režim a jazyk ukázek kódu, na tom stojí, že web nemá vlastní
+      // zásady ochrany osobních údajů (docs/adr/0006). Po změně nastavení nebo verze Scalaru obojí ověř znovu.
       Scalar.createApiReference('#app', {
         sources: {{sources}},
         // Jazyk rozhraní; česká verze nese vlastní překlad (i18n/scalar.cs.json),

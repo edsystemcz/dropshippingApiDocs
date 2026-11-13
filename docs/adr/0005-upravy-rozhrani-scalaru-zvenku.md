@@ -6,4 +6,4 @@ Některé úpravy rozhraní Scalar ve vlastním sestavení nenabízí: vlastní 
 
 - Úpravy stojí na vnitřní stavbě stránky, kterou Scalar vykresluje (třídy jako `.darklight-reference`, přesné znění textů). Nová verze Scalaru je může tiše rozbít; po každé aktualizaci je proto potřeba spustit `npm test` a `npm run verify`, které je kontrolují.
 - Co Scalar ze stránky hned odstraní (zavřená skupina v menu), se nedá animovat; animuje se jen otevření.
-- Přepínač režimu Scalaru zůstává ve stránce skrytý a naše tlačítko ho jen spouští, takže barevný režim dál ukládá jen Scalar a zásady ochrany osobních údajů platí beze změny.
+- Přepínač režimu Scalaru zůstává ve stránce skrytý a naše tlačítko ho jen spouští, takže barevný režim dál ukládá jen Scalar a úložiště prohlížeče se nemění (ADR 0006).

@@ -431,7 +431,7 @@ test('každá skupina má úvodní text', async () => {
   }
 });
 
-// Úvod, autentizace, chyby a ochrana osobních údajů (ZADANI část 7).
+// Úvod, autentizace a chyby (ZADANI část 7).
 
 /** Kapitoly úvodu podle nadpisů první úrovně; ukázky kódu se za nadpisy nepočítají. */
 function introChapters(description) {
@@ -484,21 +484,13 @@ test('kapitola o autentizaci ukazuje token endpoint prostředí, postup v eD SHO
   }
 });
 
-test('úvod začíná kapitolou Úvod a končí zásadami ochrany osobních údajů s pěti body', async () => {
-  const expected = {
-    cs: { titles: ['Úvod', 'Autentizace', 'Chyby', 'Ochrana osobních údajů'], settings: /jazyka ukázek kódu/ },
-    en: { titles: ['Introduction', 'Authentication', 'Errors', 'Privacy policy'], settings: /code sample language/ },
-  };
+test('úvod začíná kapitolou Úvod, po ní následují Autentizace a Chyby', async () => {
+  const expected = { cs: ['Úvod', 'Autentizace', 'Chyby'], en: ['Introduction', 'Authentication', 'Errors'] };
   for (const [file, spec] of await builtSpecs()) {
-    const { titles, settings } = expected[file.startsWith('en/') ? 'en' : 'cs'];
-    const chapters = introChapters(spec.info.description);
-    assert.deepEqual(chapters.map(({ title }) => title).filter((title) => titles.includes(title)), titles, `${file}: pořadí kapitol`);
-    assert.equal(chapters[0].title, titles[0], file);
-    const policy = chapters.at(-1);
-    assert.equal(policy.title, titles.at(-1), `${file}: zásady nejsou poslední kapitolou`);
-    assert.deepEqual([...policy.body.matchAll(/^\*\*(\d)\. /gm)].map(([, point]) => point), ['1', '2', '3', '4', '5'], file);
-    assert.match(policy.body.split(/^\*\*[34]\. /m)[1], settings, `${file}: bod 3 nezmiňuje jazyk ukázek kódu`);
-    assert.ok(policy.body.includes('https://github.com/edsystemcz/dropshippingApiDocs/issues'), `${file}: chybí odkaz na issues`);
+    const titles = expected[file.startsWith('en/') ? 'en' : 'cs'];
+    const chapters = introChapters(spec.info.description).map(({ title }) => title);
+    assert.equal(chapters[0], titles[0], file);
+    assert.deepEqual(chapters.filter((title) => titles.includes(title)), titles, `${file}: pořadí kapitol`);
   }
 });
 

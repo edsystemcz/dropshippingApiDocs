@@ -11,7 +11,8 @@
 //   - přepínač jazyka vede oběma směry z operace na stejnou operaci a z kapitoly
 //     úvodu na začátek úvodu, zvolené prostředí zůstává,
 //   - úložiště prohlížeče je prázdné, dokud návštěvník nepřepne barevný režim
-//     nebo jazyk ukázek kódu; na tom stojí zásady ochrany osobních údajů,
+//     nebo jazyk ukázek kódu; na tom stojí, že web nemá vlastní zásady
+//     ochrany osobních údajů (docs/adr/0006),
 //   - tlačítka, která volají API nebo servery Scalaru, jsou skrytá (docs/adr/0003),
 //   - záhlaví s logem nepřekrývá menu ani přepínač režimu a cíle odkazů končí pod
 //     ním, na počítači i na mobilu (tam je logo vpravo na řádku s tlačítkem
