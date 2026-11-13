@@ -1,7 +1,8 @@
 // Sestaví web ze skutečných zdrojů repa (specifikace, overlay, šablona, písma,
-// Scalar) a kontroluje, co se dostane do výstupu. Chování v prohlížeči (síť,
-// úložiště) tím ověřené není; to se po změně nastavení nebo verze Scalaru
-// ověřuje v prohlížeči.
+// Scalar) a kontroluje, co se dostane do výstupu. Kde jde o to, jak jsou texty
+// napsané (pojmy ze slovníku, osnova obou jazyků), čte přímo složku content/.
+// Chování v prohlížeči (síť, úložiště) tím ověřené není; to se po změně
+// nastavení nebo verze Scalaru ověřuje v prohlížeči.
 
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -287,6 +288,17 @@ const builtSpecs = async () =>
     ),
   );
 
+/** Jazyk verze, ze které je specifikace `file` (`en/openapi.prod.json` je anglická). */
+const languageOf = (file) => (file.startsWith('en/') ? 'en' : 'cs');
+
+/** Nadpisy kapitol úvodu v pořadí podle zadání (ZADANI část 1 a 7). */
+const CHAPTERS = {
+  cs: { intro: 'Úvod', authentication: 'Autentizace', guide: 'Průvodce synchronizací katalogu', xml: 'XML struktura', errors: 'Chyby', faq: 'Časté otázky' },
+  en: { intro: 'Introduction', authentication: 'Authentication', guide: 'Catalog synchronization guide', xml: 'XML structure', errors: 'Errors', faq: 'Frequently asked questions' },
+};
+/** Nadpis kapitoly úvodu (`guide`, `faq`, …) v jazyce verze, ze které je specifikace `file`. */
+const chapterTitle = (file, chapter) => CHAPTERS[languageOf(file)][chapter];
+
 test('stažení katalogového souboru je v menu ve skupině Products', async () => {
   for (const [file, spec] of await builtSpecs()) {
     const download = spec.paths['/files/{fileName}']?.get;
@@ -303,7 +315,7 @@ test('skupiny jsou v pořadí Info, Codelist, Products, OrdersB2C, OrdersB2B a m
     en: ['Service status', 'Codelists', 'Product catalog', 'B2C orders', 'B2B orders'],
   };
   for (const [file, spec] of await builtSpecs()) {
-    const expected = names[file.startsWith('en/') ? 'en' : 'cs'];
+    const expected = names[languageOf(file)];
     assert.deepEqual(
       spec.tags.map((tag) => [tag.name, tag['x-displayName']]),
       ['Info', 'Codelist', 'Products', 'OrdersB2C', 'OrdersB2B'].map((name, index) => [name, expected[index]]),
@@ -328,14 +340,14 @@ test('názvy operací jsou opravené a GET /Info má schválený název', async 
     '/codelists/ProductIndex': 'Číselník produktových indexů',
     '/codelists/ProductBindingsType': 'Číselník typů příslušenství/náhrad',
   };
-  for (const [file, spec] of (await builtSpecs()).filter(([file]) => !file.startsWith('en/'))) {
+  for (const [file, spec] of (await builtSpecs()).filter(([file]) => languageOf(file) === 'cs')) {
     for (const [path, summary] of Object.entries(expected)) assert.equal(spec.paths[path].get.summary, summary, `${file}: GET ${path}`);
     assert.equal(spec.paths['/products/catalog'].post.summary, 'Generování dropship katalogu produktů asynchronně', file);
   }
 });
 
 test('popisy adresy u číselníku mají správnou diakritiku', async () => {
-  for (const [file, spec] of (await builtSpecs()).filter(([file]) => !file.startsWith('en/'))) {
+  for (const [file, spec] of (await builtSpecs()).filter(([file]) => languageOf(file) === 'cs')) {
     const { city, zipCode } = spec.components.schemas.AddressExternalModel.properties;
     assert.deepEqual([city.description, zipCode.description], ['Město.', 'PSČ.'], file);
   }
@@ -385,7 +397,7 @@ test('úvod začíná nadpisem a prostředí s upozorněním ho má hned pod ní
   for (const [file, spec, environment] of await builtSpecs()) {
     const lines = spec.info.description.split('\n');
     assert.match(lines[0], /^# \S/, `${file}: úvod nezačíná nadpisem`);
-    const notice = environment.notice?.[file.startsWith('en/') ? 'en' : 'cs'];
+    const notice = environment.notice?.[languageOf(file)];
     if (notice) assert.deepEqual(lines.slice(1, 5), ['', '> [!WARNING]', `> ${notice}`, ''], file);
     else assert.ok(!spec.info.description.includes('[!WARNING]'), `${file}: upozornění u prostředí, které žádné nemá`);
   }
@@ -472,8 +484,7 @@ test('přehled operací v úvodu odkazuje na všech pět operací synchronizace 
 test('kapitola o autentizaci ukazuje token endpoint prostředí, postup v eD SHOPu a přihlašovací údaje jen jako zástupné hodnoty', async () => {
   const placeholders = { client_id: '{clientId}', client_secret: '{clientSecret}', username: '{username}', password: '{password}', refresh_token: '{refreshToken}' };
   for (const [file, spec, environment] of await builtSpecs()) {
-    const title = file.startsWith('en/') ? 'Authentication' : 'Autentizace';
-    const chapter = introChapter(file, spec, title);
+    const chapter = introChapter(file, spec, chapterTitle(file, 'authentication'));
     assert.ok(chapter.body.includes(`'${environment.tokenUrl}'`), `${file}: ukázka nevolá ${environment.tokenUrl}`);
     assert.ok(chapter.body.includes('https://edshopb2b.edsystem.cz'), `${file}: chybí adresa eD SHOPu`);
     // Portál se píše „eD SHOP“; adresy v odkazech se nepočítají.
@@ -484,20 +495,142 @@ test('kapitola o autentizaci ukazuje token endpoint prostředí, postup v eD SHO
   }
 });
 
-test('úvod začíná kapitolou Úvod, po ní následují Autentizace a Chyby', async () => {
-  const expected = { cs: ['Úvod', 'Autentizace', 'Chyby'], en: ['Introduction', 'Authentication', 'Errors'] };
+test('úvod má kapitoly Úvod, Autentizace, Průvodce synchronizací katalogu, XML struktura, Chyby a Časté otázky v tomto pořadí', async () => {
   for (const [file, spec] of await builtSpecs()) {
-    const titles = expected[file.startsWith('en/') ? 'en' : 'cs'];
-    const chapters = introChapters(spec.info.description).map(({ title }) => title);
-    assert.equal(chapters[0], titles[0], file);
-    assert.deepEqual(chapters.filter((title) => titles.includes(title)), titles, `${file}: pořadí kapitol`);
+    assert.deepEqual(introChapters(spec.info.description).map(({ title }) => title), Object.values(CHAPTERS[languageOf(file)]), file);
+  }
+});
+
+test('úvod a text skupiny Products odkazují na průvodce synchronizací katalogu', async () => {
+  const guideAddress = { cs: 'průvodce-synchronizací-katalogu', en: 'catalog-synchronization-guide' };
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const link = `](#${environment.slug}/description/${guideAddress[languageOf(file)]})`;
+    const [intro] = introChapters(spec.info.description);
+    assert.ok(intro.body.includes(link), `${file}: úvod neodkazuje na průvodce`);
+    assert.ok(spec.tags.find(({ name }) => name === 'Products').description.includes(link), `${file}: text skupiny Products neodkazuje na průvodce`);
+  }
+});
+
+// Průvodce synchronizací katalogu, XML struktura a časté otázky (ZADANI část 7).
+
+/** Ohrazený blok kódu; skupina 2 je jeho obsah. */
+const FENCED_BLOCK = /^(```|~~~)[^\n]*\n(.*?)^\1[ \t]*$/gms;
+/** Obsahy ohrazených bloků kódu v textu. */
+const codeBlocks = (markdown) => [...markdown.matchAll(FENCED_BLOCK)].map(([, , code]) => code);
+
+/** Texty ve složce content/<subdir> včetně šablony: `[cesta pod content/, obsah]`. */
+async function contentFiles(subdir) {
+  const dir = join(repoRoot, 'content', subdir);
+  const paths = (await readdir(dir, { recursive: true })).filter((name) => name.endsWith('.md')).sort();
+  return Promise.all(paths.map(async (path) => [join(subdir, path), await readFile(join(dir, path), 'utf8')]));
+}
+
+test('průvodce určuje koncové stavy jobu podle zadání a pseudokód jim odpovídá', async () => {
+  // Úspěch: Generated, nebo Successful s vyplněným fileName. Neúspěch: Error, Rejected,
+  // Cancelled, Deleted. Ostatní stavy znamenají, že job běží (ZADANI část 7, Rozpory).
+  for (const [file, spec] of await builtSpecs()) {
+    const guide = introChapter(file, spec, chapterTitle(file, 'guide')).body;
+    const rows = guide.split('\n').filter((line) => line.startsWith('|'));
+    const success = rows.find((row) => row.includes('`Generated`'));
+    assert.match(success ?? '', /`Successful` [^`|]+ `fileName`/, `${file}: tabulka konce jobu neuvádí úspěch Generated a Successful s fileName`);
+    const failure = rows.find((row) => row.includes('`Error`'));
+    assert.deepEqual(failure?.match(/`[A-Z]\w+`/g), ['`Error`', '`Rejected`', '`Cancelled`', '`Deleted`'], `${file}: tabulka konce jobu neuvádí neúspěch`);
+
+    const pseudocode = codeBlocks(guide).find((code) => code.includes('runCatalog'));
+    assert.ok(pseudocode, `${file}: průvodce nemá pseudokód`);
+    assert.match(pseudocode, /isSuccess\(status\):\s+return status\.state == "Generated"\s+or \(status\.state == "Successful" and status\.fileName is not empty\)/, file);
+    assert.match(pseudocode, /isFailure\(status\):\s+return status\.state in \["Error", "Rejected", "Cancelled", "Deleted"\]/, file);
+    assert.match(pseudocode, /if isSuccess\(status\):[^]*?return success[^]*?if isFailure\(status\):[^]*?return failure\s+sleep\(/, `${file}: pseudokód se v ostatních stavech neptá dál`);
+  }
+});
+
+/**
+ * Zakázané výrazy ze slovníku, které mají v textech jiný, povolený význam:
+ * „požadavek“ je v textech HTTP požadavek (slovník ho zakazuje jen jako název
+ * jobu) a „endpoint“ slovník ve veřejných textech povoluje.
+ */
+const ALLOWED_TERMS = new Set(['požadavek', 'endpoint (v repu)']);
+/** Ustálená spojení se zakázaným slovem: název smlouvy a oddíl v rozhraní eD SHOPu. */
+const ALLOWED_PHRASES = [/dealersk\p{L}* smlouv\p{L}*/gu, /sekci „Moje nastavení“/gu];
+
+test('české texty nepoužívají výrazy, které slovník zakazuje', async () => {
+  const glossary = await readFile(join(repoRoot, 'GLOSSARY.md'), 'utf8');
+  const forbidden = [...glossary.matchAll(/^_Nepoužívat_: (.+)$/gm)]
+    .flatMap(([, list]) => list.split(',').map((term) => term.trim()))
+    .filter((term) => !ALLOWED_TERMS.has(term));
+  assert.ok(forbidden.length > 10, 'ze slovníku se nenačetly zakázané výrazy');
+  // Výraz se hledá i ve skloňovaných tvarech: slovo bez koncové samohlásky a cokoli za ním.
+  // Výraz s velkým písmenem (eDshop) se hledá s rozlišením velikosti, aby nenašel adresy.
+  const stem = (word) => word.replace(/[aáeéěiíoóuůúyý]+$/iu, '');
+  const patterns = forbidden.map((term) => [
+    term,
+    new RegExp(`(?<!\\p{L})${term.split(/\s+/).map(stem).join('\\p{L}*\\s+')}\\p{L}*`, term === term.toLowerCase() ? 'giu' : 'gu'),
+  ]);
+  for (const [path, markdown] of await contentFiles('cs')) {
+    const text = ALLOWED_PHRASES.reduce((rest, phrase) => rest.replace(phrase, ''), markdown);
+    for (const [term, pattern] of patterns) {
+      assert.deepEqual(text.match(pattern) ?? [], [], `content/${path}: slovník místo „${term}“ předepisuje jiný pojem`);
+    }
+  }
+});
+
+test('checklist a ostatní seznamy jsou běžné seznamy, bez políček úkolů a zbytků převodu z dokumentu v1.4', async () => {
+  for (const [file, spec] of await builtSpecs()) {
+    const checklist = introChapter(file, spec, chapterTitle(file, 'guide')).body.split(/^## /m).at(-1);
+    assert.ok(checklist.split('\n').filter((line) => line.startsWith('- ')).length >= 20, `${file}: průvodce nekončí checklistem`);
+    for (const text of stringsOf(spec)) {
+      assert.doesNotMatch(text, /^\s*[-*+] \[[ xX]\]/m, `${file}: políčko úkolu`);
+      assert.doesNotMatch(text, /^:::|<div class="page"|<!-- \/?TOC -->/m, `${file}: zbytek převodu z dokumentu v1.4`);
+    }
+  }
+});
+
+test('texty píšou adresu API a token endpointu jen zástupným symbolem prostředí', async () => {
+  const hosts = ENVIRONMENTS.flatMap(({ baseUrl, tokenUrl }) => [new URL(baseUrl).host, new URL(tokenUrl).host]);
+  for (const [path, markdown] of await contentFiles('')) {
+    for (const host of hosts) assert.ok(!markdown.includes(host), `content/${path}: adresa ${host} místo {{baseUrl}} nebo {{tokenUrl}}`);
+  }
+});
+
+test('časté otázky výklad neopakují: každá odpověď je krátká a odkazuje tam, kde je výklad', async () => {
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const faq = introChapter(file, spec, chapterTitle(file, 'faq')).body;
+    const answers = faq.split(/^## /m).slice(1);
+    assert.ok(answers.length >= 15, `${file}: časté otázky mají jen ${answers.length} otázek`);
+    for (const answer of answers) {
+      const [question, ...body] = answer.trim().split('\n');
+      const text = body.join('\n');
+      assert.match(text, new RegExp(`\\]\\(#${environment.slug}/(description|tag)/`), `${file}: odpověď na „${question}“ nikam neodkazuje`);
+      assert.doesNotMatch(text, /^(```|\||\s*[-*+] |\s*\d+\. )/m, `${file}: odpověď na „${question}“ obsahuje ukázku, tabulku nebo seznam`);
+      assert.ok(text.trim().split(/\n\s*\n/).length === 1, `${file}: odpověď na „${question}“ má víc odstavců`);
+    }
+  }
+});
+
+test('česká a anglická kapitola úvodu mají stejnou osnovu', async () => {
+  const outline = (markdown) => {
+    const lines = markdown.replace(FENCED_BLOCK, '```').split('\n');
+    return {
+      headings: lines.flatMap((line) => /^(#+) /.exec(line)?.[1].length ?? []),
+      codeBlocks: codeBlocks(markdown).length,
+      tableRows: lines.filter((line) => line.startsWith('|')).length,
+      listItems: lines.filter((line) => /^\s*([-*+]|\d+\.) /.test(line)).length,
+      links: lines.join('\n').split('](').length - 1,
+    };
+  };
+  const english = new Map(await contentFiles('en/intro'));
+  for (const [path, markdown] of await contentFiles('cs/intro')) {
+    const counterpart = path.replace(/^cs\//, 'en/');
+    assert.ok(english.has(counterpart), `content/${counterpart} chybí`);
+    assert.deepEqual(outline(english.get(counterpart)), outline(markdown), `content/${path} a ${counterpart}`);
   }
 });
 
 test('jediný kontakt je adresa zákaznické péče v oddílu Podpora a oddíl říká, co k hlášení přiložit', async () => {
   const email = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
   for (const [file, spec] of await builtSpecs()) {
-    const [title, section] = file.startsWith('en/') ? ['Errors', 'Support'] : ['Chyby', 'Podpora'];
+    const title = chapterTitle(file, 'errors');
+    const section = languageOf(file) === 'en' ? 'Support' : 'Podpora';
     const chapter = introChapter(file, spec, title);
     const support = chapter.body.split(`\n## ${section}\n`)[1]?.split(/^## /m)[0].trim();
     assert.ok(support, `${file}: kapitola ${title} nemá oddíl ${section}`);
@@ -517,7 +650,7 @@ test('build nehlásí žádný nepřeložený řetězec ani text bez protějšku
 });
 
 test('anglická specifikace má přeložené názvy operací, popisy vlastností i popis zabezpečení', async () => {
-  for (const [file, spec, environment] of (await builtSpecs()).filter(([file]) => file.startsWith('en/'))) {
+  for (const [file, spec, environment] of (await builtSpecs()).filter(([file]) => languageOf(file) === 'en')) {
     assert.equal(spec.paths['/codelists/currencies'].get.summary, 'Currency codelist', file);
     assert.equal(spec.components.schemas.AddressExternalModel.properties.city.description, 'City.', file);
     assert.match(spec.components.securitySchemes.oauth2.description, new RegExp(`^OAuth 2\\.0 .*\`${environment.tokenUrl.replaceAll('.', '\\.')}\``), file);

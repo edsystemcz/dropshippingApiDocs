@@ -4,7 +4,7 @@ The Dropshipping API connects your e-shop with eD system. It provides the produc
 
 So far, this documentation describes catalog synchronization in detail. Through the API, your e-shop requests the generation of a catalog file with products, stock levels and prices. The file is not created immediately: the API first returns a `transactionId`, which your e-shop uses to check the status of the job. Only after the job is complete does the API return a `fileName`, which your e-shop uses to download the catalog file.
 
-The [Authentication](20-autentizace.md) chapter describes how to get access to the API. The catalog synchronization guide describes how often to download the catalog and how to choose the currency and the fee country.
+The [Authentication](20-autentizace.md) chapter describes how to get access to the API. The [catalog synchronization guide](30-synchronizace-katalogu.md) describes how often to download the catalog and how to choose the currency and the fee country.
 
 ## Overview of operations
 

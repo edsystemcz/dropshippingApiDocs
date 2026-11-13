@@ -4,7 +4,7 @@ Dropshipping API propojí váš e-shop s eD system. Poskytuje katalog produktů 
 
 Podrobně je zatím popsaná synchronizace katalogu. Váš e-shop si přes API vyžádá vygenerování katalogového souboru s produkty, sklady a cenami. Soubor nevznikne hned: API nejprve vrátí `transactionId`, podle kterého e-shop zjišťuje stav jobu. Teprve po dokončení jobu API vrátí `fileName`, podle kterého e-shop katalogový soubor stáhne.
 
-Jak získat přístup k API, popisuje kapitola [Autentizace](20-autentizace.md). Jak často katalog stahovat a jak zvolit měnu a zemi poplatků, popisuje průvodce synchronizací katalogu.
+Jak získat přístup k API, popisuje kapitola [Autentizace](20-autentizace.md). Jak často katalog stahovat a jak zvolit měnu a zemi poplatků, popisuje [průvodce synchronizací katalogu](30-synchronizace-katalogu.md).
 
 ## Přehled operací
 
