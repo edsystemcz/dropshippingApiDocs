@@ -1,6 +1,6 @@
 /*
- * Záhlaví webu nad referencí Scalaru s logem, které odkazuje na úvod
- * (ZADANI část 12), a drobné úpravy vzhledu reference.
+ * Záhlaví webu nad referencí Scalaru s logem, které odkazuje na úvod,
+ * a přepínačem jazyka (ZADANI část 12 a 16), a drobné úpravy vzhledu reference.
  * Nepatří k motivu: platí i po smazání site/theme.css, barvy bere
  * z proměnných Scalaru.
  */
@@ -11,6 +11,8 @@
   --site-logo-height: 32px;
   /* Šířka loga podle poměru stran jeho viewBox (1452 × 308). */
   --site-logo-width: calc(var(--site-logo-height) * 1452 / 308);
+  /* Šířka přepínače jazyka; na mobilu podle ní končí název oddílu v liště. */
+  --site-languages-width: 64px;
 }
 
 .site-header {
@@ -42,6 +44,41 @@
   height: var(--site-logo-height);
 }
 
+/* Přepínač jazyka CZ | EN vpravo v záhlaví. */
+.site-languages {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  width: var(--site-languages-width);
+  margin-left: auto;
+  font-family: var(--scalar-font);
+  font-size: var(--scalar-font-size-3);
+  color: var(--scalar-color-3);
+}
+
+.site-languages [aria-current] {
+  font-weight: var(--scalar-semibold);
+  color: var(--scalar-color-1);
+}
+
+.site-languages a {
+  color: var(--scalar-color-2);
+  text-decoration: none;
+  border-radius: var(--scalar-radius);
+}
+
+.site-languages a:hover {
+  color: var(--scalar-color-accent);
+  text-decoration: underline;
+}
+
+.site-languages a:focus-visible {
+  outline: 2px solid var(--scalar-color-accent);
+  outline-offset: 2px;
+}
+
 /*
  * Text a dělicí čára loga mají fill:currentColor, značka eD a trojúhelník
  * zůstávají ve firemní růžové. Scalar dává třídu režimu na body a mění ji
@@ -56,8 +93,8 @@
 }
 
 /*
- * Mobil (Scalar pod 1000 px skryje menu za tlačítko v liště): logo leží
- * vpravo v liště Scalaru místo vlastního řádku nad ní; vlevo zůstává tlačítko
+ * Mobil (Scalar pod 1000 px skryje menu za tlačítko v liště): logo
+ * s přepínačem jazyka leží vpravo v liště Scalaru místo vlastního řádku nad ní; vlevo zůstává tlačítko
  * menu a název právě čteného oddílu. Scalar pak nemá nad lištou nic, posun
  * ke kotvám počítá jen s ní.
  */
@@ -65,6 +102,7 @@
   :root {
     --scalar-custom-header-height: 0px;
     --site-logo-height: 28px;
+    --site-languages-width: 20px;
   }
 
   .site-header {
@@ -86,8 +124,20 @@
    * nevejde ani tak, nahradí tři tečky. Selektory s .scalar-app přebijí
    * třídy lišty (px-2, text-sm, whitespace-nowrap).
    */
+  /*
+   * Vedle loga zbývá na název oddílu málo místa, proto přepínač ukazuje jen
+   * odkaz na druhý jazyk; zvolený jazyk je vidět na textech stránky.
+   */
+  .site-languages {
+    margin-left: 8px;
+  }
+
+  .site-languages > :not(a) {
+    display: none;
+  }
+
   .scalar-app .t-doc__header header {
-    padding-right: calc(var(--site-logo-width) + 24px);
+    padding-right: calc(var(--site-logo-width) + var(--site-languages-width) + 32px);
   }
 
   .scalar-app .t-doc__header header > span {

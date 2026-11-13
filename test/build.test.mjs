@@ -41,12 +41,16 @@ const LOGO = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE svg PUBLIC "-//W
  * Založí zdrojové složky s daným obsahem a vrátí vstupy pro build.
  * `theme` je obsah souboru s motivem; bez něj build žádný motiv nedostane.
  */
-async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, theme }) {
+async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, theme, translations = {}, scalarTranslations = {} }) {
   const dir = await mkdtemp(join(tmpdir(), 'build-'));
   const specDir = join(dir, 'spec');
   const overlayDir = join(dir, 'overlay');
   const siteDir = join(dir, 'site');
   const contentDir = join(dir, 'content');
+  const i18nDir = join(dir, 'i18n');
+  await mkdir(i18nDir);
+  await writeFile(join(i18nDir, 'en.json'), typeof translations === 'string' ? translations : JSON.stringify(translations));
+  await writeFile(join(i18nDir, 'scalar.cs.json'), JSON.stringify(scalarTranslations));
   for (const [path, text] of Object.entries(content)) {
     await mkdir(dirname(join(contentDir, path)), { recursive: true });
     await writeFile(join(contentDir, path), text);
@@ -75,6 +79,7 @@ async function project({ specs, overlays = {}, template = TEMPLATE, assets = {},
     overlayDir,
     contentDir,
     siteDir,
+    i18nDir,
     outDir: join(dir, 'dist'),
     assets: assetList,
     logo: join(dir, 'logo.svg'),
@@ -1329,4 +1334,194 @@ test('prázdný soubor s textem shodí build, aby se nepočítal jako popis', as
   const inputs = await project({ specs: bothAt('1.1.122'), content: { 'cs/operations/get__Info.md': '\n \n', 'cs/tags/Info.md': 'Stav služby.\n' } });
 
   await assert.rejects(run(inputs), /content\/cs\/operations\/get__Info\.md.*prázdný/);
+});
+
+// Anglická verze: řetězce ze specifikace se překládají podle znění (i18n/en.json).
+
+test('anglická verze má řetězce ze specifikace i z overlay přeložené podle znění, česká je má beze změny', async () => {
+  const paths = {
+    '/Info': { get: operation('Info') },
+    '/codelists/countries': {
+      get: operation('Codelist', {
+        summary: 'Vraci ciselnik zemi.',
+        parameters: [{ name: 'lang', in: 'query', description: 'Jazyk\r\nnázvů.', schema: { type: 'string' } }],
+        responses: { 200: { description: 'Success' } },
+      }),
+    },
+  };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths, {
+    schemas: { 'Elinkx.Models.CountryModel': { type: 'object', description: 'Země.', properties: { name: { type: 'string', description: 'Název země.' } } } },
+  });
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    overlays: {
+      'base.json': {
+        tags: [{ name: 'Info', 'x-displayName': 'Stav služby' }, { name: 'Codelist', 'x-displayName': 'Číselníky' }],
+        paths: { '/codelists/countries': { get: { summary: 'Číselník zemí.' } } },
+      },
+    },
+    translations: {
+      'Číselník zemí.': 'Country codelist.',
+      'Jazyk\nnázvů.': 'Language\nof names.',
+      Success: 'Success',
+      'Země.': 'Country.',
+      'Název země.': 'Country name.',
+      'Stav služby': 'Service status',
+      'Číselníky': 'Codelists',
+    },
+  });
+
+  await run(inputs);
+
+  for (const slug of ['prod', 'test']) {
+    const en = await readJson(inputs.outDir, 'en', `openapi.${slug}.json`);
+    const countries = en.paths['/codelists/countries'].get;
+    assert.equal(countries.summary, 'Country codelist.');
+    assert.equal(countries.parameters[0].description, 'Language\nof names.');
+    assert.equal(countries.responses[200].description, 'Success');
+    assert.equal(en.components.schemas.CountryModel.description, 'Country.');
+    assert.equal(en.components.schemas.CountryModel.properties.name.description, 'Country name.');
+    assert.deepEqual(en.tags, [{ name: 'Info', 'x-displayName': 'Service status' }, { name: 'Codelist', 'x-displayName': 'Codelists' }]);
+    const cs = await readJson(inputs.outDir, `openapi.${slug}.json`);
+    assert.equal(cs.paths['/codelists/countries'].get.summary, 'Číselník zemí.');
+    assert.deepEqual(cs.tags, [{ name: 'Info', 'x-displayName': 'Stav služby' }, { name: 'Codelist', 'x-displayName': 'Číselníky' }]);
+  }
+});
+
+test('nový nebo změněný řetězec zůstane česky a build ho vypíše jako nepřeložený s místem výskytu, nespadne', async () => {
+  const withSummary = (summary) => ({ '/Info': { get: operation('Info', { summary }) } });
+  const inputs = await project({
+    specs: {
+      prod: sourceSpec('Dropshipping API Gateway service, build: 1.1.122', withSummary('Vrátí stav služby.')),
+      test: sourceSpec('Dropshipping API Gateway service, build: 1.1.123', withSummary('Vrátí stav a verzi služby.')),
+    },
+    translations: { 'Vrátí stav služby.': 'Returns the service status.', Success: 'Success', 'Starý řetězec.': 'Old string.' },
+  });
+
+  const { output } = await run(inputs);
+
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.prod.json')).paths['/Info'].get.summary, 'Returns the service status.');
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.test.json')).paths['/Info'].get.summary, 'Vrátí stav a verzi služby.');
+  assert.match(
+    output,
+    /^WARN en: nepřeložené řetězce ze specifikace \(1\), zůstaly česky; doplňte je do i18n\/en\.json:\n {2}"Vrátí stav a verzi služby\."  \(paths › \/Info › get › summary, jen TEST\)$/m,
+  );
+  assert.match(output, /^INFO en: překlady v i18n\/en\.json, které ve specifikaci nic nepřekládají:\n {2}"Starý řetězec\."$/m);
+  assert.doesNotMatch(output, /WARN cs.*nepřeložen/);
+});
+
+test('překlad se zástupným symbolem sedí na řetězec z overlay v každém prostředí', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    overlays: { 'base.json': { paths: { '/Info': { get: { summary: 'Token vydává {{tokenUrl}}.' } } } } },
+    translations: { 'Token vydává {{tokenUrl}}.': 'The token is issued by {{tokenUrl}}.', Success: 'Success' },
+  });
+
+  const { output } = await run(inputs);
+
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.prod.json')).paths['/Info'].get.summary, 'The token is issued by https://auth.example.cz/oauth/token.');
+  assert.equal((await readJson(inputs.outDir, 'en', 'openapi.test.json')).paths['/Info'].get.summary, 'The token is issued by https://auth-test.example.cz/oauth/token.');
+  assert.doesNotMatch(output, /nepřeložen|nic nepřekládají/);
+});
+
+test('příklady, výchozí hodnoty a výčty jsou data API: nepřekládají se ani nehlásí; název příkladu a vlastnost pojmenovaná default se překládají', async () => {
+  const schema = {
+    type: 'object',
+    description: 'Produkt.',
+    properties: {
+      default: { type: 'boolean', description: 'Výchozí.' },
+      state: { type: 'string', enum: ['Skladem'], default: 'Skladem', example: 'Skladem' },
+    },
+    example: { description: 'Notebook s klávesnicí.' },
+  };
+  const examples = { notebook: { summary: 'Notebook.', value: { description: 'Notebook s klávesnicí.' } } };
+  const paths = {
+    '/Info': { get: operation('Info', { responses: { 200: { description: 'Success', content: { 'application/json': { schema: { $ref: '#/components/schemas/Product' }, examples } } } } }) },
+  };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths, { schemas: { Product: schema } });
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    translations: { Success: 'Success', 'Produkt.': 'Product.', 'Výchozí.': 'Default.', 'Notebook.': 'Laptop.' },
+  });
+
+  const { output } = await run(inputs);
+
+  const en = await readJson(inputs.outDir, 'en', 'openapi.prod.json');
+  assert.deepEqual(en.paths['/Info'].get.responses[200].content['application/json'].examples, {
+    notebook: { summary: 'Laptop.', value: { description: 'Notebook s klávesnicí.' } },
+  });
+  const product = en.components.schemas.Product;
+  assert.equal(product.properties.default.description, 'Default.');
+  assert.deepEqual(product.example, { description: 'Notebook s klávesnicí.' });
+  assert.deepEqual(product.properties.state, schema.properties.state);
+  assert.doesNotMatch(output, /nepřeložen/);
+});
+
+test('slovník s prázdným překladem nebo neplatným JSON shodí build s názvem souboru', async () => {
+  await assert.rejects(run(await project({ specs: bothAt('1.1.122'), translations: { Success: '' } })), /i18n\/en\.json: překlad musí být neprázdný řetězec:\n {2}"Success"/);
+  await assert.rejects(run(await project({ specs: bothAt('1.1.122'), translations: '{ "Success": ' })), /i18n\/en\.json: /);
+});
+
+test('text bez protějšku v druhém jazyce build vypíše jako varování; v druhém jazyce se nezobrazí a jiným jazykem se nedoplní', async () => {
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', catalogOperations());
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    content: {
+      'cs/intro/10-uvod.md': '# Úvod\n\nK čemu API slouží.\n',
+      'en/intro/10-uvod.md': '# Introduction\n\nWhat the API is for.\n',
+      'cs/intro/20-autentizace.md': '# Autentizace\n\nToken.\n',
+      'cs/operations/post__products_catalog.md': 'Založení jobu.\n',
+      'en/tags/Products.md': 'Product catalog.\n',
+      'cs/_sablona-operace.md': '# Šablona\n',
+    },
+    translations: { Success: 'Success' },
+  });
+
+  const { output } = await run(inputs);
+
+  assert.match(
+    output,
+    /^WARN Texty bez protějšku v druhém jazyce \(3\); v druhém jazyce se nezobrazí:\n {2}content\/cs\/intro\/20-autentizace\.md: chybí content\/en\/intro\/20-autentizace\.md\n {2}content\/cs\/operations\/post__products_catalog\.md: chybí content\/en\/operations\/post__products_catalog\.md\n {2}content\/en\/tags\/Products\.md: chybí content\/cs\/tags\/Products\.md$/m,
+  );
+  for (const slug of ['prod', 'test']) {
+    const en = await readJson(inputs.outDir, 'en', `openapi.${slug}.json`);
+    assert.equal(en.info.description.startsWith('# Introduction\n\nWhat the API is for.'), true);
+    assert.doesNotMatch(en.info.description, /Autentizace/);
+    assert.equal(en.paths['/products/catalog'].post.description, undefined);
+    const cs = await readJson(inputs.outDir, `openapi.${slug}.json`);
+    assert.equal(cs.tags?.find(({ name }) => name === 'Products')?.description, undefined);
+  }
+});
+
+// Rozhraní Scalaru: česká verze dostane překlady z i18n/scalar.cs.json.
+
+const localizationOf = async (...path) =>
+  JSON.parse(/localize\((.*?)\)<\/script>/s.exec(await readFile(join(...path, 'index.html'), 'utf8'))[1]);
+
+test('česká stránka předá Scalaru český překlad rozhraní, anglická jeho vestavěnou angličtinu', async () => {
+  const scalarTranslations = { search: { open: 'Otevřít vyhledávání', placeholder: 'Hledat </script>…' } };
+  const inputs = await project({ specs: bothAt('1.1.122'), template: '<html><script>localize({{localization}})</script></html>', scalarTranslations });
+
+  await run(inputs);
+
+  assert.deepEqual(await localizationOf(inputs.outDir), { locale: 'cs', translations: scalarTranslations });
+  assert.deepEqual(await localizationOf(inputs.outDir, 'en'), { locale: 'en' });
+  assert.doesNotMatch(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), /<\/script>…/);
+});
+
+// Přepínač jazyka v záhlaví.
+
+test('přepínač jazyka ukazuje CZ | EN, zvolený jazyk jako aktuální a druhý jako relativní odkaz na jeho verzi', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), template: '<header>{{languageSwitch}}</header>' });
+
+  await run(inputs);
+
+  assert.equal(
+    await readFile(join(inputs.outDir, 'index.html'), 'utf8'),
+    '<header><nav class="site-languages" aria-label="Jazyk"><span lang="cs" aria-current="true">CZ</span> <span aria-hidden="true">|</span> <a href="en/" hreflang="en" lang="en" data-language-switch>EN</a></nav></header>',
+  );
+  assert.equal(
+    await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'),
+    '<header><nav class="site-languages" aria-label="Language"><a href="../" hreflang="cs" lang="cs" data-language-switch>CZ</a> <span aria-hidden="true">|</span> <span lang="en" aria-current="true">EN</span></nav></header>',
+  );
 });

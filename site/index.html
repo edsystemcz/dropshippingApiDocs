@@ -12,6 +12,7 @@
   <body>
     <header class="site-header" data-scalar-scroll-header>
       <a class="site-logo" href="./" aria-label="eD system">{{logo}}</a>
+      {{languageSwitch}}
     </header>
     <div id="app"></div>
     <script src="{{rootPath}}assets/scalar/standalone.js"></script>
@@ -22,6 +23,9 @@
       // osobních údajů. Po změně nastavení nebo verze Scalaru obojí ověř znovu.
       Scalar.createApiReference('#app', {
         sources: {{sources}},
+        // Jazyk rozhraní; česká verze nese vlastní překlad (i18n/scalar.cs.json),
+        // řetězec bez překladu Scalar ukáže anglicky.
+        localization: {{localization}},
         // Vzhled určuje site/theme.css; bez něj zůstanou výchozí barvy Scalaru.
         theme: 'none',
         // Písma jsou přibalená (assets/fonts), z CDN Scalaru se nenačítají.
@@ -51,6 +55,20 @@
         if (decodeURIComponent(location.hash.slice(1)) === intro.id) history.replaceState(null, '', `#${environment}`);
         location.hash = intro.id;
       });
+
+      // Přepínač jazyka vede na stejné místo v druhém jazyce a zachová zvolené
+      // prostředí: adresy operací, skupin a modelů jsou v obou jazycích stejné.
+      // Adresy kapitol úvodu vznikají z nadpisů a mezi jazyky se liší, proto
+      // odkaz z úvodu vede na jeho začátek. Adresa se doplní těsně před
+      // přechodem, protože Scalar ji při procházení mění bez události.
+      for (const link of document.querySelectorAll('[data-language-switch]')) {
+        const page = link.getAttribute('href');
+        const follow = () => {
+          const [environment, section] = location.hash.slice(1).split('/');
+          link.setAttribute('href', page + (section === 'description' ? `#${environment}/description/introduction` : location.hash));
+        };
+        for (const type of ['pointerdown', 'focus', 'click']) link.addEventListener(type, follow);
+      }
     </script>
   </body>
 </html>

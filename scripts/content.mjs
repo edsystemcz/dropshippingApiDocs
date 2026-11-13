@@ -69,6 +69,27 @@ function caseHint(expectedNames, name) {
  * @typedef {{name: string | null, described: boolean, operations: {label: string, described: boolean}[]}[]} Coverage
  */
 
+/** Cesta souboru s textem pro hlášení, například `content/cs/intro/10-uvod.md`. */
+const textWhere = (contentDir, language, path) => `${basename(contentDir)}/${language}/${path}`;
+
+/**
+ * Texty, které v některém jiném jazyce nemají protějšek se stejnou cestou.
+ * Takový text se v druhém jazyce nezobrazí; jiným jazykem se nedoplňuje.
+ * @param {string} contentDir složka s texty, pro každý jazyk jedna podsložka
+ * @param {Map<string, Text[]>} textsByLanguage texty podle jazyka
+ * @returns {{text: Text, missing: string}[]} text a cesta chybějícího protějšku pro hlášení
+ */
+export function missingCounterparts(contentDir, textsByLanguage) {
+  const paths = new Map([...textsByLanguage].map(([language, texts]) => [language, new Set(texts.map(({ path }) => path))]));
+  return [...textsByLanguage].flatMap(([language, texts]) =>
+    texts.flatMap((text) =>
+      [...paths]
+        .filter(([other, otherPaths]) => other !== language && !otherPaths.has(text.path))
+        .map(([other]) => ({ text, missing: textWhere(contentDir, other, text.path) })),
+    ),
+  );
+}
+
 /**
  * Načte texty jednoho jazyka seřazené podle cesty. Jazyk bez složky nemá žádné.
  * @returns {Promise<Text[]>}
@@ -88,7 +109,7 @@ export async function readTexts(contentDir, language) {
     .filter((segments) => !segments.some((segment) => /^[_.]/.test(segment)))
     .map((segments) => segments.join('/'))
     .sort();
-  const where = (path) => `${basename(contentDir)}/${language}/${path}`;
+  const where = (path) => textWhere(contentDir, language, path);
   const stray = paths.filter((path) => !KINDS.some((kind) => new RegExp(`^${kind}/[^/]+\\.md$`).test(path)));
   if (stray.length > 0) {
     throw new Error(

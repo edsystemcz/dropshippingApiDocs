@@ -19,10 +19,12 @@ const FONT_DIR = 'assets/fonts';
 /** Motiv je pokus a jde odebrat smazáním souboru; testy motivu pak nemají co kontrolovat. */
 const HAS_THEME = existsSync(join(repoRoot, 'site/theme.css'));
 let outDir;
+/** Varování z buildu. */
+const warnings = [];
 
 before(async () => {
   outDir = join(await mkdtemp(join(tmpdir(), 'site-')), 'dist');
-  await build({ ...(await siteInputs(repoRoot)), outDir, log: { info: () => {}, warn: () => {} } });
+  await build({ ...(await siteInputs(repoRoot)), outDir, log: { info: () => {}, warn: (message) => warnings.push(message) } });
 });
 
 const read = (path) => readFile(join(outDir, path), 'utf8');
@@ -290,17 +292,16 @@ test('stažení katalogového souboru je v menu ve skupině Products', async () 
   }
 });
 
-test('skupiny jsou v pořadí Info, Codelist, Products, OrdersB2C, OrdersB2B a mají zobrazované názvy', async () => {
+test('skupiny jsou v pořadí Info, Codelist, Products, OrdersB2C, OrdersB2B a mají zobrazované názvy v jazyce verze', async () => {
+  const names = {
+    cs: ['Stav služby', 'Číselníky', 'Katalog produktů', 'Objednávky B2C', 'Objednávky B2B'],
+    en: ['Service status', 'Codelists', 'Product catalog', 'B2C orders', 'B2B orders'],
+  };
   for (const [file, spec] of await builtSpecs()) {
+    const expected = names[file.startsWith('en/') ? 'en' : 'cs'];
     assert.deepEqual(
       spec.tags.map((tag) => [tag.name, tag['x-displayName']]),
-      [
-        ['Info', 'Stav služby'],
-        ['Codelist', 'Číselníky'],
-        ['Products', 'Katalog produktů'],
-        ['OrdersB2C', 'Objednávky B2C'],
-        ['OrdersB2B', 'Objednávky B2B'],
-      ],
+      ['Info', 'Codelist', 'Products', 'OrdersB2C', 'OrdersB2B'].map((name, index) => [name, expected[index]]),
       file,
     );
   }
@@ -322,14 +323,14 @@ test('názvy operací jsou opravené a GET /Info má schválený název', async 
     '/codelists/ProductIndex': 'Číselník produktových indexů.',
     '/codelists/ProductBindingsType': 'Číselník typů příslušenství/náhrad.',
   };
-  for (const [file, spec] of await builtSpecs()) {
+  for (const [file, spec] of (await builtSpecs()).filter(([file]) => !file.startsWith('en/'))) {
     for (const [path, summary] of Object.entries(expected)) assert.equal(spec.paths[path].get.summary, summary, `${file}: GET ${path}`);
     assert.equal(spec.paths['/products/catalog'].post.summary, 'Generování dropship katalogu produktů asynchronně.', file);
   }
 });
 
 test('popisy adresy u číselníku mají správnou diakritiku', async () => {
-  for (const [file, spec] of await builtSpecs()) {
+  for (const [file, spec] of (await builtSpecs()).filter(([file]) => !file.startsWith('en/'))) {
     const { city, zipCode } = spec.components.schemas.AddressExternalModel.properties;
     assert.deepEqual([city.description, zipCode.description], ['Město.', 'PSČ.'], file);
   }
@@ -417,4 +418,46 @@ test('šablona popisu operace existuje v obou jazycích, má jednotnou osnovu a 
   for (const [file, spec] of await builtSpecs()) {
     assert.ok(!stringsOf(spec).some((text) => text.includes('Jak šablonu použít') || text.includes('How to use the template')), file);
   }
+});
+
+// Anglická verze a české rozhraní Scalaru (ZADANI část 16).
+
+test('build nehlásí žádný nepřeložený řetězec ani text bez protějšku v druhém jazyce', () => {
+  assert.deepEqual(warnings.filter((message) => /nepřeložené|bez protějšku/.test(message)), []);
+});
+
+test('anglická specifikace má přeložené názvy operací, popisy vlastností i popis zabezpečení', async () => {
+  for (const [file, spec, environment] of (await builtSpecs()).filter(([file]) => file.startsWith('en/'))) {
+    assert.equal(spec.paths['/codelists/currencies'].get.summary, 'Currency codelist.', file);
+    assert.equal(spec.components.schemas.AddressExternalModel.properties.city.description, 'City.', file);
+    assert.match(spec.components.securitySchemes.oauth2.description, new RegExp(`^OAuth 2\\.0 .*\`${environment.tokenUrl.replaceAll('.', '\\.')}\``), file);
+  }
+});
+
+/** Řetězce vnořeného objektu s překlady podle cesty klíčů (`search.open`). */
+const leaves = (value, prefix = '') =>
+  Object.entries(value).flatMap(([key, item]) => (typeof item === 'string' ? [[`${prefix}${key}`, item]] : leaves(item, `${prefix}${key}.`)));
+
+test('český překlad rozhraní Scalaru pokrývá každý anglický řetězec zafixované verze a nemá klíče navíc', async () => {
+  // Po aktualizaci Scalaru test vyjmenuje řetězce, které přibyly; na webu zatím zůstanou anglicky.
+  const { en } = await import('../node_modules/@scalar/api-reference/dist/features/localization/locales/en.js');
+  const english = new Map(leaves(en));
+  const czech = new Map(leaves(JSON.parse(await readFile(join(repoRoot, 'i18n/scalar.cs.json'), 'utf8'))));
+  assert.deepEqual([...english.keys()].filter((key) => !czech.has(key)), [], 'řetězce bez českého překladu');
+  assert.deepEqual([...czech.keys()].filter((key) => !english.has(key)), [], 'překlady, které Scalar nezná');
+  for (const [key, text] of english) {
+    for (const [placeholder] of text.matchAll(/\{\w+\}/g)) assert.ok(czech.get(key).includes(placeholder), `${key}: chybí ${placeholder}`);
+  }
+});
+
+test('česká stránka nastaví Scalaru češtinu s překladem rozhraní, anglická angličtinu', async () => {
+  const localization = async (page) => JSON.parse(/localization: (\{.*?\}),\n/s.exec(await read(page))[1]);
+  assert.deepEqual(await localization('index.html'), { locale: 'cs', translations: JSON.parse(await readFile(join(repoRoot, 'i18n/scalar.cs.json'), 'utf8')) });
+  assert.deepEqual(await localization('en/index.html'), { locale: 'en' });
+});
+
+test('záhlaví má přepínač jazyka CZ | EN, který vede na druhou verzi', async () => {
+  const header = async (page) => /<header class="site-header"[^>]*>(.*?)<\/header>/s.exec(await read(page))[1];
+  assert.match(await header('index.html'), /<a href="en\/" hreflang="en"[^>]*data-language-switch>EN<\/a>/);
+  assert.match(await header('en/index.html'), /<a href="\.\.\/" hreflang="cs"[^>]*data-language-switch>CZ<\/a>/);
 });

@@ -8,6 +8,8 @@
 //   - položky menu z nadpisů úvodu a odkazy mezi texty, které build převedl na
 //     adresy ve Scalaru (scripts/scalar-addresses.mjs), vedou na existující místo,
 //   - stránka při načtení ani procházení nevolá žádnou cizí adresu (docs/adr/0002),
+//   - přepínač jazyka vede oběma směry z operace na stejnou operaci a z kapitoly
+//     úvodu na začátek úvodu, zvolené prostředí zůstává,
 //   - úložiště prohlížeče je prázdné, dokud návštěvník nepřepne barevný režim
 //     nebo jazyk ukázek kódu; na tom stojí zásady ochrany osobních údajů,
 //   - tlačítka, která volají API nebo servery Scalaru, jsou skrytá (docs/adr/0003),
@@ -24,8 +26,8 @@
 //
 // Spouštěj po změně stránky, motivu, nastavení nebo verze Scalaru: npm run verify
 // Potřebuje nainstalovaný Chrome nebo Chromium; cestu lze určit proměnnou CHROME_PATH.
-// Skript hledá prvky podle popisků v rozhraní Scalaru; když je změní překlad
-// rozhraní nebo nová verze Scalaru, uprav konstanty níže.
+// Skript hledá prvky podle popisků v rozhraní Scalaru v jazyce verze (klíče
+// překladů v konstantách níže); když nová verze Scalaru klíče změní, uprav je.
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -45,16 +47,31 @@ import { operationAddress } from './scalar-addresses.mjs';
 const SUBFOLDER = '/nejaka/podslozka/web/';
 /** Název hostitele, který pro Scalar není localhost; Chrome ho překládá na místní adresu. */
 const PUBLIC_HOST = 'docs.example.test';
-const LANGUAGE_DIRS = ['', 'en/'];
+/** Jazykové verze: složka ve výstupu a překlad rozhraní Scalaru (bez něj vestavěná angličtina). */
+const LANGUAGES = [
+  { dir: '', label: 'cs/', scalarTranslations: 'i18n/scalar.cs.json' },
+  { dir: 'en/', label: 'en/' },
+];
 
-/** Popisky tlačítek a odkazů, které na stránce být nesmějí; hledají se jako celá slova. */
-const FORBIDDEN_LABELS = ['Test Request', 'Open API Client', 'Ask AI', 'Developer Tools', 'Generate SDK', 'Deploy', 'Share', 'Configure'];
-/** Začátek popisku tlačítka pro stažení OpenAPI dokumentu. */
-const DOWNLOAD_LABEL = 'Download OpenAPI Document';
-/** Začátek popisku výběru jazyka ukázky kódu u operace. */
-const CODE_SAMPLE_LABEL = 'Change code sample language';
-/** Popisek tlačítka, které na mobilu otevře menu. */
-const OPEN_MENU_LABEL = 'Open Menu';
+/**
+ * Popisky prvků rozhraní Scalaru podle klíče jeho překladů. Na stránce se
+ * hledají v jazyce verze: anglicky z balíčku Scalaru, česky z překladu
+ * rozhraní; chybějící překlad Scalar ukáže anglicky.
+ */
+const LABEL_KEYS = {
+  /** Začátek popisku tlačítka pro stažení OpenAPI dokumentu. */
+  download: 'download.openapi',
+  /** Začátek popisku výběru jazyka ukázky kódu u operace. */
+  codeSample: 'clientLibraries.changeClient',
+  /** Popisek tlačítka, které na mobilu otevře menu. */
+  openMenu: 'navigation.openMenu',
+  /** Popisek tlačítka, které otevře vyhledávání. */
+  openSearch: 'search.open',
+};
+/** Popisky tlačítek a odkazů, které na stránce být nesmějí, podle klíče překladů; hledají se jako celá slova. */
+const FORBIDDEN_LABEL_KEYS = ['operation.testRequest', 'agent.askAi', 'developerTools.title', 'sdk.generate', 'developerTools.deploy', 'developerTools.share', 'developerTools.configure'];
+/** Zakázané popisky, které Scalar nepřekládá. */
+const FORBIDDEN_FIXED_LABELS = ['Open API Client'];
 /** Okno telefonu pro kontrolu rozvržení na mobilu. */
 const MOBILE_SCREEN = { width: 390, height: 844, deviceScaleFactor: 2, mobile: true };
 /** Barva textu loga podle třídy barevného režimu na body (ZADANI část 12). */
@@ -66,8 +83,7 @@ const LOGO_COLORS = { 'light-mode': 'rgb(83, 86, 90)', 'dark-mode': 'rgb(255, 25
  * proměnné --code-*.
  */
 const CONTRAST_VARIABLES = ['--scalar-color-accent', '--scalar-link-color', '--scalar-sidebar-color-active', '--scalar-color-green'];
-/** Popisek tlačítka, které otevře vyhledávání, a co do něj skript napíše. */
-const OPEN_SEARCH_LABEL = 'Open Search';
+/** Co skript napíše do vyhledávání. */
 const SEARCH_QUERY = 'katalog';
 /** Jazyk ukázek kódu, na který skript přepne. */
 const OTHER_CLIENT = 'Python';
@@ -404,7 +420,7 @@ function addressMismatch(slug, inMenu, expected) {
 /**
  * Projde jednu stránku a vrátí seznam zjištěných problémů (prázdný = v pořádku).
  */
-async function verifyPage({ debugPort, url, environments, expected }) {
+async function verifyPage({ debugPort, url, environments, expected, labels }) {
   const problems = [];
   const expect = (condition, problem) => {
     if (!condition) problems.push(problem);
@@ -474,7 +490,7 @@ async function verifyPage({ debugPort, url, environments, expected }) {
       await expectContrast('aktivní položka menu pod myší');
 
       const storageBefore = await page.evaluate(STORAGE);
-      expect(await page.tap(buttonStartingWith(OPEN_SEARCH_LABEL)), 'chybí tlačítko vyhledávání');
+      expect(await page.tap(buttonStartingWith(labels.openSearch)), 'chybí tlačítko vyhledávání');
       const searchInput = `document.querySelector('[role="dialog"] input')`;
       await page.waitFor(`${searchInput} && ${searchInput} === document.activeElement`, 'otevření vyhledávání');
       await page.send('Input.insertText', { text: SEARCH_QUERY });
@@ -487,8 +503,9 @@ async function verifyPage({ debugPort, url, environments, expected }) {
       await page.waitFor(`!${searchInput}`, 'zavření vyhledávání');
       expect(same(await page.evaluate(STORAGE), storageBefore), 'vyhledávání zapsalo do úložiště');
     };
+    // Celé slovo i s diakritikou: před a za popiskem není písmeno ani číslice.
     const forbiddenLabels = () =>
-      page.evaluate(`${JSON.stringify(FORBIDDEN_LABELS)}.filter((label) => [...document.querySelectorAll('button, a')].some((element) => new RegExp('\\\\b' + label + '\\\\b').test(${LABEL}(element))))`);
+      page.evaluate(`${JSON.stringify(labels.forbidden)}.filter((label) => [...document.querySelectorAll('button, a')].some((element) => new RegExp('(?<![\\\\p{L}\\\\p{N}])' + label + '(?![\\\\p{L}\\\\p{N}])', 'u').test(${LABEL}(element))))`);
 
     // Menu výchozího prostředí a procházení všech operací.
     await openGroups();
@@ -510,8 +527,8 @@ async function verifyPage({ debugPort, url, environments, expected }) {
     await page.evaluate('window.scrollTo(0, document.documentElement.scrollHeight)');
     await sleep(500);
     expect(seenForbidden.size === 0, `na stránce jsou skrytá tlačítka: ${[...seenForbidden].join(', ')}`);
-    expect(await page.evaluate(`Boolean(${buttonStartingWith(DOWNLOAD_LABEL)})`), 'chybí stažení OpenAPI dokumentu');
-    expect(await page.evaluate(`Boolean(${buttonStartingWith(CODE_SAMPLE_LABEL)})`), 'chybí ukázky kódu');
+    expect(await page.evaluate(`Boolean(${buttonStartingWith(labels.download)})`), 'chybí stažení OpenAPI dokumentu');
+    expect(await page.evaluate(`Boolean(${buttonStartingWith(labels.codeSample)})`), 'chybí ukázky kódu');
     expect(same(await page.evaluate(STORAGE), EMPTY_STORAGE), 'úložiště není po procházení prázdné');
 
     // Přepínač prostředí.
@@ -563,13 +580,13 @@ async function verifyPage({ debugPort, url, environments, expected }) {
     // Mobil: logo na jednom řádku s tlačítkem menu Scalaru, menu i cíl odkazu pod nimi.
     await page.send('Emulation.setDeviceMetricsOverride', MOBILE_SCREEN);
     await page.send('Page.reload');
-    await page.waitFor(`document.querySelector('h1') && ${buttonStartingWith(OPEN_MENU_LABEL)}?.checkVisibility()`, 'vykreslení reference na mobilu');
+    await page.waitFor(`document.querySelector('h1') && ${buttonStartingWith(labels.openMenu)}?.checkVisibility()`, 'vykreslení reference na mobilu');
     await sleep(1000);
     const logo = `document.querySelector('.site-logo')`;
-    expect(await page.evaluate(uncovered(buttonStartingWith(OPEN_MENU_LABEL))), 'na mobilu záhlaví zakrývá tlačítko menu');
+    expect(await page.evaluate(uncovered(buttonStartingWith(labels.openMenu))), 'na mobilu záhlaví zakrývá tlačítko menu');
     expect(await page.evaluate(uncovered(logo)), 'na mobilu není vidět logo');
-    expect(await page.evaluate(sameRow(logo, buttonStartingWith(OPEN_MENU_LABEL))), 'na mobilu není logo na řádku s tlačítkem menu');
-    await page.tap(buttonStartingWith(OPEN_MENU_LABEL));
+    expect(await page.evaluate(sameRow(logo, buttonStartingWith(labels.openMenu))), 'na mobilu není logo na řádku s tlačítkem menu');
+    await page.tap(buttonStartingWith(labels.openMenu));
     const mobileMenu = `[...document.querySelectorAll('aside')].find((aside) => aside.checkVisibility())`;
     await page.waitFor(mobileMenu, 'otevření menu na mobilu');
     await sleep(300);
@@ -613,6 +630,76 @@ async function verifyPage({ debugPort, url, environments, expected }) {
   return problems;
 }
 
+/**
+ * Přepínač jazyka na stránce `fromUrl` vede na stránku `toUrl`: z operace na
+ * stejnou operaci, z kapitoly úvodu na začátek úvodu, a zvolené prostředí
+ * zůstává. Zkouší se v prostředí, které není výchozí, aby bylo vidět, že
+ * přepínač prostředí neztratí. Vrací seznam problémů.
+ */
+async function verifyLanguageSwitch({ debugPort, fromUrl, toUrl, environment, operation }) {
+  const problems = [];
+  const expect = (condition, problem) => {
+    if (!condition) problems.push(problem);
+  };
+  const page = await openPage(debugPort);
+  const toPath = new URL(toUrl).pathname;
+  const rendered = (title) => `document.querySelectorAll('aside a').length > 0 && document.querySelector('h1')?.textContent.trim() === ${JSON.stringify(title)}`;
+  /** Klepne na přepínač jazyka a počká na druhou verzi webu ve stejném prostředí. */
+  const switchLanguage = async () => {
+    expect(await page.tap(`document.querySelector('[data-language-switch]')`), 'chybí odkaz přepínače jazyka');
+    await page.waitFor(`location.pathname === ${JSON.stringify(toPath)} && ${rendered(environment.title)}`, `přechod na ${toPath} v prostředí ${environment.slug}`);
+    await sleep(1500);
+  };
+  const hash = () => page.evaluate('decodeURIComponent(location.hash)');
+  try {
+    // Z operace na stejnou operaci.
+    await page.send('Page.navigate', { url: `${fromUrl}${operation}` });
+    await page.waitFor(rendered(environment.title), `vykreslení ${operation}`);
+    await sleep(1500);
+    await switchLanguage();
+    expect((await hash()) === operation, `přepínač jazyka z ${operation} vede na ${await hash()}`);
+    expect(await page.evaluate(`(${TARGET_TOP}) !== null && ${belowTopBars(TARGET_TOP)}`), `po přepnutí jazyka není vidět ${operation}`);
+
+    // Z kapitoly úvodu na začátek úvodu.
+    await page.send('Page.navigate', { url: `${fromUrl}#${environment.slug}` });
+    await page.waitFor(rendered(environment.title), 'vykreslení reference');
+    await sleep(1000);
+    const introPrefix = `#${environment.slug}/description/`;
+    const introStart = `${introPrefix}introduction`;
+    // Nadpis úvodu, jehož adresa se od začátku úvodu liší.
+    const chapter = await page.waitFor(
+      `(() => { const heading = [...document.querySelectorAll('[id]')].find(({ id }) => id.startsWith(${JSON.stringify(introPrefix.slice(1))}) && id !== ${JSON.stringify(introStart.slice(1))}); return heading && '#' + heading.id; })()`,
+      `nadpis úvodu v prostředí ${environment.slug}`,
+    );
+    await page.evaluate(`location.hash = ${JSON.stringify(chapter)}`);
+    await page.waitFor(rendered(environment.title), `přepnutí na ${chapter}`);
+    await sleep(1000);
+    await switchLanguage();
+    expect((await hash()) === introStart, `přepínač jazyka z ${chapter} vede na ${await hash()}, ne na ${introStart}`);
+    expect(await page.evaluate(`(${TARGET_TOP}) !== null && ${belowTopBars(TARGET_TOP)}`), 'po přepnutí jazyka z kapitoly úvodu není vidět začátek úvodu');
+    expect(page.errors.length === 0, `chyby v konzoli: ${page.errors.join(' | ')}`);
+  } catch (error) {
+    problems.push(error.message);
+  } finally {
+    await page.close();
+  }
+  return problems;
+}
+
+/** Hodnota překladu podle klíče s tečkami (`search.open`), nebo undefined. */
+const translationAt = (translations, key) => key.split('.').reduce((value, part) => value?.[part], translations);
+
+/** Popisky rozhraní Scalaru pro jazykovou verzi; zakázané hledá anglicky i v jazyce verze. */
+async function labelsFor(language) {
+  const { en } = await import('../node_modules/@scalar/api-reference/dist/features/localization/locales/en.js');
+  const translations = language.scalarTranslations ? JSON.parse(await readFile(join(repoRoot, language.scalarTranslations), 'utf8')) : {};
+  const label = (key) => translationAt(translations, key) ?? translationAt(en, key);
+  return {
+    ...Object.fromEntries(Object.entries(LABEL_KEYS).map(([name, key]) => [name, label(key)])),
+    forbidden: [...new Set([...FORBIDDEN_LABEL_KEYS.flatMap((key) => [translationAt(en, key), label(key)]), ...FORBIDDEN_FIXED_LABELS])],
+  };
+}
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const workDir = await mkdtemp(join(tmpdir(), 'verify-browser-'));
 const outDir = join(workDir, 'dist');
@@ -625,24 +712,38 @@ try {
   server = await serve(outDir);
   chrome = await launchChrome(join(workDir, 'profile'));
 
-  for (const languageDir of LANGUAGE_DIRS) {
+  const report = (label, problems, success) => {
+    if (problems.length === 0) {
+      console.log(`✔ ${label}: ${success}`);
+    } else {
+      failed = true;
+      console.error(`✖ ${label}`);
+      for (const problem of problems) console.error(`    ${problem}`);
+    }
+  };
+  const pageUrl = (host, language) => `http://${host}:${server.port}${SUBFOLDER}${language.dir}`;
+  for (const language of LANGUAGES) {
+    const labels = await labelsFor(language);
     const expected = {};
     for (const { slug } of inputs.environments) {
-      expected[slug] = await expectedAddresses(join(outDir, languageDir, `openapi.${slug}.json`), slug);
+      expected[slug] = await expectedAddresses(join(outDir, language.dir, `openapi.${slug}.json`), slug);
     }
     for (const host of ['127.0.0.1', PUBLIC_HOST]) {
-      const url = `http://${host}:${server.port}${SUBFOLDER}${languageDir}`;
-      const problems = await verifyPage({ debugPort: chrome.port, url, environments: inputs.environments, expected });
-      const label = `${languageDir || 'cs/'} na ${host}`;
-      if (problems.length === 0) {
-        const counts = (pick) => Object.entries(expected).map(([slug, addresses]) => `${environmentLabel(slug)} ${pick(addresses).length}`).join(', ');
-        console.log(`✔ ${label}: operací ${counts((addresses) => addresses.operations)}; odkazů v textech ${counts((addresses) => addresses.textLinks)}; žádná cizí adresa; úložiště v pořádku`);
-      } else {
-        failed = true;
-        console.error(`✖ ${label}`);
-        for (const problem of problems) console.error(`    ${problem}`);
-      }
+      const url = pageUrl(host, language);
+      const problems = await verifyPage({ debugPort: chrome.port, url, environments: inputs.environments, expected, labels });
+      const label = `${language.label} na ${host}`;
+      const counts = (pick) => Object.entries(expected).map(([slug, addresses]) => `${environmentLabel(slug)} ${pick(addresses).length}`).join(', ');
+      report(label, problems, `operací ${counts((addresses) => addresses.operations)}; odkazů v textech ${counts((addresses) => addresses.textLinks)}; žádná cizí adresa; úložiště v pořádku`);
     }
+  }
+  // Přepínač jazyka oběma směry, v prostředí, které není výchozí.
+  const environment = inputs.environments.find((candidate) => !candidate.default);
+  const spec = JSON.parse(await readFile(join(outDir, `openapi.${environment.slug}.json`), 'utf8'));
+  const { method, path, operation: switchOperation } = operations(spec).next().value;
+  const operation = operationAddress(environment.slug, switchOperation.tags?.[0], method, path);
+  for (const [from, to] of [LANGUAGES, [...LANGUAGES].reverse()]) {
+    const problems = await verifyLanguageSwitch({ debugPort: chrome.port, fromUrl: pageUrl(PUBLIC_HOST, from), toUrl: pageUrl(PUBLIC_HOST, to), environment, operation });
+    report(`přepínač jazyka ${from.label} → ${to.label}`, problems, `operace i úvod v prostředí ${environmentLabel(environment.slug)}`);
   }
 } finally {
   chrome?.close();

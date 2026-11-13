@@ -6,12 +6,13 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Validator } from '@seriousme/openapi-schema-validator';
-import { insertTexts, readTexts } from './content.mjs';
+import { insertTexts, missingCounterparts, readTexts } from './content.mjs';
 import { environmentLabel, versionLabel } from './environments.mjs';
 import { mapStrings, operations } from './openapi.mjs';
 import { applyOverlays, readOverlays } from './overlay.mjs';
 import { fillPlaceholders } from './placeholders.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
+import { readDictionary, readScalarTranslations, translateSpecs } from './translations.mjs';
 
 /**
  * Titulek je název prostředí; číslo buildu API se z původního titulku stěhuje
@@ -61,17 +62,64 @@ function reportCoverage(label, coverage, log) {
   if (lines.length > 0) log.warn([`${label}: operace bez textu:`, ...lines].join('\n'));
 }
 
+/** Vypíše jako varování texty, které v druhém jazyce nemají protějšek. */
+function reportCounterparts(withoutCounterpart, log) {
+  if (withoutCounterpart.length === 0) return;
+  log.warn(
+    [
+      `Texty bez protějšku v druhém jazyce (${withoutCounterpart.length}); v druhém jazyce se nezobrazí:`,
+      ...withoutCounterpart.map(({ text, missing }) => `  ${text.where}: chybí ${missing}`),
+    ].join('\n'),
+  );
+}
+
+/**
+ * Vypíše řetězce ze specifikace, které slovník nepřekládá, jako varování
+ * s úplným seznamem: klíč, jak ho zapsat do slovníku, a kde řetězec leží.
+ * Překlady, které na nic nesedí (řetězec se ve specifikaci změnil nebo
+ * zmizel), jen oznámí.
+ */
+function reportTranslations(language, where, { untranslated, unused }, environments, log) {
+  if (untranslated.length > 0) {
+    const lines = untranslated.map(({ text, location, environments: foundIn }) => {
+      const onlyIn = foundIn.length < environments.length ? `, jen ${foundIn.map(environmentLabel).join(', ')}` : '';
+      return `  ${JSON.stringify(text)}  (${location}${onlyIn})`;
+    });
+    log.warn([`${language}: nepřeložené řetězce ze specifikace (${untranslated.length}), zůstaly česky; doplňte je do ${where}:`, ...lines].join('\n'));
+  }
+  if (unused.length > 0) {
+    log.info([`${language}: překlady v ${where}, které ve specifikaci nic nepřekládají:`, ...unused.map((key) => `  ${JSON.stringify(key)}`)].join('\n'));
+  }
+}
+
 /** Název specifikace prostředí ve výstupu; stránka na ni odkazuje relativně. */
 const specFileName = (slug) => `openapi.${slug}.json`;
 
 /**
  * Jazykové verze webu: čeština v kořeni výstupu, angličtina ve složce en/.
  * `rootPath` je cesta ze stránky ke kořeni výstupu, kde leží společné soubory.
+ * `label` je zkratka v přepínači jazyka, `switchLabel` jeho popisek pro čtečky.
  */
 const LANGUAGES = [
-  { code: 'cs', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system' },
-  { code: 'en', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system' },
+  // Češtinu Scalar vestavěnou nemá; rozhraní dostane překlad ze slovníku.
+  { code: 'cs', label: 'CZ', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system', switchLabel: 'Jazyk', scalarTranslations: 'scalar.cs.json' },
+  // Specifikace je česky; anglická verze ji překládá podle slovníku.
+  { code: 'en', label: 'EN', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system', switchLabel: 'Language', dictionary: 'en.json' },
 ];
+
+/**
+ * Přepínač jazyka do záhlaví: zvolený jazyk jako aktuální, ostatní jako
+ * relativní odkaz na jejich verzi. Odkazy nesou `data-language-switch`;
+ * skript stránky k nim před přechodem doplní místo v referenci a prostředí.
+ */
+const languageSwitch = (current) => {
+  const items = LANGUAGES.map((language) => {
+    if (language === current) return `<span lang="${language.code}" aria-current="true">${language.label}</span>`;
+    const href = `${current.rootPath}${language.dir ? `${language.dir}/` : ''}` || './';
+    return `<a href="${href}" hreflang="${language.code}" lang="${language.code}" data-language-switch>${language.label}</a>`;
+  });
+  return `<nav class="site-languages" aria-label="${current.switchLabel}">${items.join(' <span aria-hidden="true">|</span> ')}</nav>`;
+};
 
 /** JSON pro vložení do <script>: znak < se zapíše únikově, aby text nemohl značku ukončit. */
 const scriptJson = (value) => JSON.stringify(value).replaceAll('<', '\\u003c');
@@ -108,8 +156,12 @@ const THEME_FILE = 'assets/theme.css';
  *
  * Specifikace prostředí vzniká ze zdrojové specifikace, doplňků z overlay
  * (scripts/overlay.mjs) a textů v jazyce verze (scripts/content.mjs) a musí
- * projít validací OpenAPI. Chyba v doplňcích, v textech nebo ve validaci
- * shodí build dřív, než se sáhne na výstup.
+ * projít validací OpenAPI. Anglická verze má řetězce ze specifikace a overlay
+ * přeložené podle slovníku (scripts/translations.mjs). Chyba v doplňcích,
+ * v textech, ve slovníku nebo ve validaci shodí build dřív, než se sáhne na výstup.
+ *
+ * Jako varování build vypíše nepřeložené řetězce a texty bez protějšku
+ * v druhém jazyce; takový text se v druhém jazyce nezobrazí.
  *
  * Na konci build vypíše pro každý jazyk a prostředí pokrytí: kolik operací
  * a skupin má text, a jako varování ty, které ho nemají.
@@ -117,8 +169,9 @@ const THEME_FILE = 'assets/theme.css';
  * Šablona stránky `index.html` v `siteDir` smí obsahovat tyto zástupné symboly:
  * `{{lang}}` (jazyk verze), `{{pageTitle}}` (titulek stránky), `{{rootPath}}`
  * (cesta ke společným souborům), `{{sources}}` (prostředí pro přepínač Scalaru),
- * `{{logo}}` (logo jako inline SVG) a `{{themeStyles}}` (odkaz na motiv,
- * nebo nic).
+ * `{{logo}}` (logo jako inline SVG), `{{themeStyles}}` (odkaz na motiv,
+ * nebo nic), `{{localization}}` (jazyk a překlad rozhraní pro volbu
+ * `localization` Scalaru) a `{{languageSwitch}}` (přepínač jazyka CZ | EN).
  *
  * Motiv je nepovinný: když ho build dostane, zkopíruje ho do `assets/theme.css`
  * a stránky na něj odkazují. Bez něj má web výchozí vzhled Scalaru.
@@ -130,13 +183,15 @@ const THEME_FILE = 'assets/theme.css';
  * @param {string} options.overlayDir složka s doplňky (`*.json`)
  * @param {string} options.contentDir složka s texty, pro každý jazyk jedna podsložka
  * @param {string} options.siteDir složka se šablonou stránky
+ * @param {string} options.i18nDir složka s překlady: `en.json` (řetězce ze specifikace
+ *   pro anglickou verzi) a `scalar.cs.json` (rozhraní Scalaru pro českou verzi)
  * @param {string} options.outDir výstupní složka; build ji před zápisem smaže
  * @param {{from: string, to: string}[]} options.assets společné soubory: odkud a kam ve výstupu
  * @param {string} options.logo soubor s logem (SVG)
  * @param {string} [options.theme] soubor s motivem (CSS)
  * @param {{info: (message: string) => void, warn: (message: string) => void}} [options.log]
  */
-export async function build({ environments, specDir, overlayDir, contentDir, siteDir, outDir, assets, logo: logoPath, theme: themePath, log = console }) {
+export async function build({ environments, specDir, overlayDir, contentDir, siteDir, i18nDir, outDir, assets, logo: logoPath, theme: themePath, log = console }) {
   const template = await readFile(join(siteDir, 'index.html'), 'utf8');
   const logo = inlineSvg(await readFile(logoPath, 'utf8'));
   const theme = themePath === undefined ? null : await readFile(themePath);
@@ -159,9 +214,19 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
   const files = new Map();
   /** Pokrytí texty podle označení jazykové verze prostředí. */
   const coverages = new Map();
+  const textsByLanguage = new Map();
+  for (const { code } of LANGUAGES) textsByLanguage.set(code, await readTexts(contentDir, code));
+  reportCounterparts(missingCounterparts(contentDir, textsByLanguage), log);
   for (const language of LANGUAGES) {
-    const texts = await readTexts(contentDir, language.code);
-    const inserted = insertTexts({ specs, environments, texts, language: language.code, log });
+    const texts = textsByLanguage.get(language.code);
+    let languageSpecs = specs;
+    if (language.dictionary) {
+      const dictionary = await readDictionary(join(i18nDir, language.dictionary));
+      const translated = translateSpecs({ specs, environments, dictionary });
+      languageSpecs = translated.specs;
+      reportTranslations(language.code, dictionary.where, translated, environments, log);
+    }
+    const inserted = insertTexts({ specs: languageSpecs, environments, texts, language: language.code, log });
     for (const [slug, withTexts] of inserted.specs) {
       const label = versionLabel(language.code, slug);
       const spec = withUnixLineEndings(withTexts);
@@ -171,9 +236,12 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
     }
   }
   if (theme !== null) files.set(THEME_FILE, theme);
-  for (const { code, dir, rootPath, pageTitle } of LANGUAGES) {
+  for (const language of LANGUAGES) {
+    const { code, dir, rootPath, pageTitle, scalarTranslations } = language;
     const themeStyles = theme === null ? '' : `<link rel="stylesheet" href="${rootPath}${THEME_FILE}">`;
-    files.set(join(dir, 'index.html'), fillPlaceholders(template, { lang: code, pageTitle, rootPath, sources, logo, themeStyles }, 'šablona stránky'));
+    const localization = scriptJson(scalarTranslations ? { locale: code, translations: await readScalarTranslations(join(i18nDir, scalarTranslations)) } : { locale: code });
+    const values = { lang: code, pageTitle, rootPath, sources, logo, themeStyles, localization, languageSwitch: languageSwitch(language) };
+    files.set(join(dir, 'index.html'), fillPlaceholders(template, values, 'šablona stránky'));
   }
   for (const { from, to } of assets) files.set(to, await readFile(from));
 
@@ -228,6 +296,7 @@ export const siteInputs = async (repoRoot) => {
     overlayDir: join(repoRoot, 'overlay'),
     contentDir: join(repoRoot, 'content'),
     siteDir: join(repoRoot, 'site'),
+    i18nDir: join(repoRoot, 'i18n'),
     assets: siteAssets(repoRoot),
     logo: join(repoRoot, 'site/assets/logo.svg'),
     ...(existsSync(theme) && { theme }),
