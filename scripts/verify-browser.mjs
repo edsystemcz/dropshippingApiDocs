@@ -23,6 +23,8 @@
 //     a tlačítko menu; tlačítko režimu po animaci ukazuje správnou ikonu,
 //   - před spuštěním Scalaru má záhlaví písmo Inter, logo barvu světlého
 //     režimu a přepínače nejsou vidět,
+//   - texty, které má Scalar napevno anglicky (tlačítko kopírování), jsou
+//     v české verzi přeložené,
 //   - rozbalená skupina v menu a vyměněná ukázka kódu mají animaci a odkazy
 //     plynulý přechod barvy,
 //   - přepnutí režimu bez načtení stránky změní motiv i barvu textu loga,
@@ -57,7 +59,7 @@ const SUBFOLDER = '/nejaka/podslozka/web/';
 const PUBLIC_HOST = 'docs.example.test';
 /** Jazykové verze: složka ve výstupu a překlad rozhraní Scalaru (bez něj vestavěná angličtina). */
 const LANGUAGES = [
-  { dir: '', label: 'cs/', scalarTranslations: 'i18n/scalar.cs.json' },
+  { dir: '', label: 'cs/', scalarTranslations: 'i18n/scalar.cs.json', scalarFixedTexts: 'i18n/scalar-fixed.cs.json' },
   { dir: 'en/', label: 'en/' },
 ];
 
@@ -563,6 +565,16 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
     await page.evaluate('window.scrollTo(0, document.documentElement.scrollHeight)');
     await sleep(500);
     expect(seenForbidden.size === 0, `na stránce jsou skrytá tlačítka: ${[...seenForbidden].join(', ')}`);
+    // Texty, které má Scalar napevno anglicky, stránka v české verzi přeložila.
+    const leftEnglish = await page.evaluate(`(() => {
+      const patterns = ${JSON.stringify(labels.untranslated)}.map((english) => new RegExp('^' + english.split('{name}').map((part) => part.replace(/[.*+?^$()|[\]\\]/g, '\\$&')).join('.+') + '$'));
+      const texts = [
+        ...[...document.querySelectorAll('[aria-label]')].map((element) => element.getAttribute('aria-label')),
+        ...[...document.querySelectorAll('button, .sr-only')].flatMap((element) => [...element.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.data)),
+      ].map((text) => text.trim());
+      return [...new Set(texts.filter((text) => patterns.some((pattern) => pattern.test(text))))];
+    })()`);
+    expect(leftEnglish.length === 0, `na stránce zůstaly anglické texty Scalaru: ${leftEnglish.join(', ')}`);
     expect(await page.evaluate(`Boolean(${buttonStartingWith(labels.download)})`), 'chybí stažení OpenAPI dokumentu');
     expect(await page.evaluate(`Boolean(${buttonStartingWith(labels.codeSample)})`), 'chybí ukázky kódu');
     expect(same(await page.evaluate(STORAGE), EMPTY_STORAGE), 'úložiště není po procházení prázdné');
@@ -784,6 +796,8 @@ async function labelsFor(language) {
   return {
     ...Object.fromEntries(Object.entries(LABEL_KEYS).map(([name, key]) => [name, label(key)])),
     forbidden: [...new Set([...FORBIDDEN_LABEL_KEYS.flatMap((key) => [translationAt(en, key), label(key)]), ...FORBIDDEN_FIXED_LABELS])],
+    // Anglické texty, které má Scalar napevno a stránka je v této verzi překládá.
+    untranslated: language.scalarFixedTexts ? Object.keys(JSON.parse(await readFile(join(repoRoot, language.scalarFixedTexts), 'utf8'))) : [],
   };
 }
 

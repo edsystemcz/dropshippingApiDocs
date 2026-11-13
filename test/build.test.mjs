@@ -44,7 +44,7 @@ const LOGO_SYMBOL = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!D
  * Založí zdrojové složky s daným obsahem a vrátí vstupy pro build.
  * `theme` je obsah souboru s motivem; bez něj build žádný motiv nedostane.
  */
-async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, logoSymbol = LOGO_SYMBOL, theme, translations = {}, scalarTranslations = {} }) {
+async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, logoSymbol = LOGO_SYMBOL, theme, translations = {}, scalarTranslations = {}, scalarFixedTexts = {} }) {
   const dir = await mkdtemp(join(tmpdir(), 'build-'));
   const specDir = join(dir, 'spec');
   const overlayDir = join(dir, 'overlay');
@@ -54,6 +54,7 @@ async function project({ specs, overlays = {}, template = TEMPLATE, assets = {},
   await mkdir(i18nDir);
   await writeFile(join(i18nDir, 'en.json'), typeof translations === 'string' ? translations : JSON.stringify(translations));
   await writeFile(join(i18nDir, 'scalar.cs.json'), JSON.stringify(scalarTranslations));
+  await writeFile(join(i18nDir, 'scalar-fixed.cs.json'), JSON.stringify(scalarFixedTexts));
   for (const [path, text] of Object.entries(content)) {
     await mkdir(dirname(join(contentDir, path)), { recursive: true });
     await writeFile(join(contentDir, path), text);
@@ -1563,4 +1564,14 @@ test('název operace nemá na konci tečku v žádném jazyce, výpustka a tečk
     assert.equal(built.paths['/codelists/countries'].post.summary, 'Import 1.2 dat...');
     assert.equal(built.components.schemas.Country.description, schema);
   }
+});
+
+test('česká stránka dostane překlad textů, které má Scalar napevno anglicky; anglická žádný', async () => {
+  const scalarFixedTexts = { Copy: 'Kopírovat', 'Copy {name} code': 'Kopírovat kód {name}' };
+  const inputs = await project({ specs: bothAt('1.1.122'), template: '<script>fixed({{fixedTexts}})</script>', scalarFixedTexts });
+
+  await run(inputs);
+
+  assert.equal(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), `<script>fixed(${JSON.stringify(scalarFixedTexts)})</script>`);
+  assert.equal(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), '<script>fixed(null)</script>');
 });

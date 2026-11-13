@@ -112,11 +112,13 @@ const specFileName = (slug) => `openapi.${slug}.json`;
  * Jazykové verze webu: čeština v kořeni výstupu, angličtina ve složce en/.
  * `rootPath` je cesta ze stránky ke kořeni výstupu, kde leží společné soubory.
  * `label` je zkratka v přepínači jazyka, `switchLabel` jeho popisek pro čtečky,
- * `themeLabel` popisek tlačítka barevného režimu (stisknuté = tmavý režim).
+ * `themeLabel` popisek tlačítka barevného režimu (stisknuté = tmavý režim),
+ * `scalarTranslations` překlad rozhraní Scalaru a `scalarFixedTexts` překlad
+ * textů, které má Scalar napevno anglicky a stránka je přepisuje skriptem.
  */
 const LANGUAGES = [
   // Češtinu Scalar vestavěnou nemá; rozhraní dostane překlad ze slovníku.
-  { code: 'cs', label: 'CZ', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system', switchLabel: 'Jazyk', themeLabel: 'Tmavý režim', scalarTranslations: 'scalar.cs.json' },
+  { code: 'cs', label: 'CZ', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system', switchLabel: 'Jazyk', themeLabel: 'Tmavý režim', scalarTranslations: 'scalar.cs.json', scalarFixedTexts: 'scalar-fixed.cs.json' },
   // Specifikace je česky; anglická verze ji překládá podle slovníku.
   { code: 'en', label: 'EN', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system', switchLabel: 'Language', themeLabel: 'Dark mode', dictionary: 'en.json' },
 ];
@@ -186,7 +188,8 @@ const THEME_FILE = 'assets/theme.css';
  * `{{logo}}` a `{{logoSymbol}}` (logo a jeho značka bez textu pro mobil jako
  * inline SVG), `{{themeStyles}}` (odkaz na motiv, nebo nic), `{{themeLabel}}`
  * (popisek tlačítka barevného režimu), `{{localization}}` (jazyk a překlad
- * rozhraní pro volbu `localization` Scalaru) a `{{languageSwitch}}`
+ * rozhraní pro volbu `localization` Scalaru), `{{fixedTexts}}` (překlad textů,
+ * které má Scalar napevno anglicky, nebo null) a `{{languageSwitch}}`
  * (přepínač jazyka CZ a EN).
  *
  * Motiv je nepovinný: když ho build dostane, zkopíruje ho do `assets/theme.css`
@@ -200,7 +203,8 @@ const THEME_FILE = 'assets/theme.css';
  * @param {string} options.contentDir složka s texty, pro každý jazyk jedna podsložka
  * @param {string} options.siteDir složka se šablonou stránky
  * @param {string} options.i18nDir složka s překlady: `en.json` (řetězce ze specifikace
- *   pro anglickou verzi) a `scalar.cs.json` (rozhraní Scalaru pro českou verzi)
+ *   pro anglickou verzi), `scalar.cs.json` (rozhraní Scalaru pro českou verzi)
+ *   a `scalar-fixed.cs.json` (texty, které má Scalar napevno anglicky)
  * @param {string} options.outDir výstupní složka; build ji před zápisem smaže
  * @param {{from: string, to: string}[]} options.assets společné soubory: odkud a kam ve výstupu
  * @param {string} options.logo soubor s logem (SVG)
@@ -255,10 +259,11 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
   }
   if (theme !== null) files.set(THEME_FILE, theme);
   for (const language of LANGUAGES) {
-    const { code, dir, rootPath, pageTitle, themeLabel, scalarTranslations } = language;
+    const { code, dir, rootPath, pageTitle, themeLabel, scalarTranslations, scalarFixedTexts } = language;
     const themeStyles = theme === null ? '' : `<link rel="stylesheet" href="${rootPath}${THEME_FILE}">`;
     const localization = scriptJson(scalarTranslations ? { locale: code, translations: await readScalarTranslations(join(i18nDir, scalarTranslations)) } : { locale: code });
-    const values = { lang: code, pageTitle, rootPath, sources, logo, logoSymbol, themeStyles, themeLabel, localization, languageSwitch: languageSwitch(language) };
+    const fixedTexts = scriptJson(scalarFixedTexts ? await readScalarTranslations(join(i18nDir, scalarFixedTexts)) : null);
+    const values = { lang: code, pageTitle, rootPath, sources, logo, logoSymbol, themeStyles, themeLabel, localization, fixedTexts, languageSwitch: languageSwitch(language) };
     files.set(join(dir, 'index.html'), fillPlaceholders(template, values, 'šablona stránky'));
   }
   for (const { from, to } of assets) files.set(to, await readFile(from));

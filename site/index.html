@@ -117,6 +117,55 @@
         }
       };
       new MutationObserver(placeControls).observe(document.getElementById('app'), { childList: true, subtree: true });
+
+      // Texty, které má Scalar napevno anglicky (tlačítko kopírování
+      // v ukázkách kódu, popisky pro čtečky); volba localization je
+      // nepřekládá. Česká verze je přepíše podle i18n/scalar-fixed.cs.json:
+      // přesné znění textu v tlačítku nebo v textu pro čtečky a popisku
+      // aria-label. {name} v klíči zastupuje proměnnou část. Anglická verze
+      // nedostane nic (null). Scalar texty vkládá průběžně, proto se hlídají
+      // změny stránky; přeložený text už žádnému klíči neodpovídá.
+      const FIXED_TEXTS = {{fixedTexts}};
+      if (FIXED_TEXTS) {
+        const escape = (text) => text.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+        const rules = Object.entries(FIXED_TEXTS).map(([english, czech]) => ({
+          pattern: new RegExp(`^${english.split('{name}').map(escape).join('(.+)')}$`),
+          czech,
+        }));
+        const translate = (text) => {
+          const trimmed = text.trim();
+          for (const { pattern, czech } of rules) {
+            const match = pattern.exec(trimmed);
+            if (match) return text.replace(trimmed, czech.replace('{name}', match[1] ?? ''));
+          }
+          return null;
+        };
+        const translateLabel = (element) => {
+          const label = element.getAttribute('aria-label');
+          const translated = label && translate(label);
+          if (translated) element.setAttribute('aria-label', translated);
+        };
+        const translateText = (node) => {
+          if (!node.parentElement?.closest('button, .sr-only')) return;
+          const translated = translate(node.data);
+          if (translated !== null) node.data = translated;
+        };
+        const translateTree = (node) => {
+          if (node.nodeType === Node.TEXT_NODE) return translateText(node);
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          for (const element of [node, ...node.querySelectorAll('[aria-label]')]) if (element.hasAttribute('aria-label')) translateLabel(element);
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+          for (let text = walker.nextNode(); text; text = walker.nextNode()) translateText(text);
+        };
+        new MutationObserver((records) => {
+          for (const record of records) {
+            if (record.type === 'childList') record.addedNodes.forEach(translateTree);
+            else if (record.type === 'attributes') translateLabel(record.target);
+            else translateText(record.target);
+          }
+        }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label'] });
+        translateTree(document.body);
+      }
       syncThemeButtons();
     </script>
   </body>

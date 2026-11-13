@@ -468,3 +468,17 @@ test('záhlaví má tlačítko barevného režimu a přepínač jazyka CZ a EN, 
   assert.match(await header('index.html'), /<button class="site-theme" type="button" aria-label="Tmavý režim" aria-pressed="false" data-theme-toggle>/);
   assert.match(await header('en/index.html'), /<button class="site-theme" type="button" aria-label="Dark mode" aria-pressed="false" data-theme-toggle>/);
 });
+
+test('texty, které česká stránka přepisuje, má Scalar zafixované verze opravdu napevno anglicky', async () => {
+  // Po aktualizaci Scalaru test vyjmenuje texty, které už v balíčku nejsou; překlad pro ně je zbytečný.
+  const scalar = await read('assets/scalar/standalone.js');
+  const fixed = JSON.parse(await readFile(join(repoRoot, 'i18n/scalar-fixed.cs.json'), 'utf8'));
+  const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const missing = Object.keys(fixed).filter((english) => {
+    // {name} je v balíčku proměnná v šabloně řetězce: `Copy ${…} code`.
+    const pattern = new RegExp(english.split('{name}').map(escape).join('\\$\\{[^}]+\\}'));
+    return !pattern.test(scalar);
+  });
+  assert.deepEqual(missing, []);
+  assert.ok(Object.values(fixed).every((czech) => typeof czech === 'string' && czech.trim() !== ''), 'prázdný překlad');
+});
