@@ -1,0 +1,1 @@
+The product catalog with stock levels and prices: starting a job that generates the catalog file, checking the job status and downloading the finished file. The group also contains the details of a single product. The [introduction](../intro/10-uvod.md) summarizes how the catalog operations fit together.

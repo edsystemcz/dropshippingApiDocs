@@ -1,0 +1,1 @@
+Codelists of countries, currencies, payment types, shipping methods, product units and subtypes, categories and supercategories, product indexes, and accessory and replacement types. Use them to find valid values for the parameters of other operations, for example the currency `id` for `currencyId`.

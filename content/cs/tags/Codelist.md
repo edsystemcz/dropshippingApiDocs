@@ -1,0 +1,1 @@
+Číselníky zemí, měn, typů plateb, doprav, jednotek a subtypů produktů, kategorií a superkategorií, produktových indexů a typů příslušenství a náhrad. Z nich zjistíte platné hodnoty pro parametry ostatních operací, například `id` měny pro `currencyId`.

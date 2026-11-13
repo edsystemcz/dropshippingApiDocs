@@ -1,0 +1,1 @@
+Katalog produktů se sklady a cenami: založení jobu na vygenerování katalogového souboru, zjištění stavu jobu a stažení hotového souboru. Skupina obsahuje i detail jednoho produktu. Jak operace katalogu navazují, shrnuje [úvod](../intro/10-uvod.md).

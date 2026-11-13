@@ -425,6 +425,99 @@ test('šablona popisu operace existuje v obou jazycích, má jednotnou osnovu a 
   }
 });
 
+test('každá skupina má úvodní text', async () => {
+  for (const [file, spec] of await builtSpecs()) {
+    for (const tag of spec.tags) assert.match(tag.description ?? '', /\S/, `${file}: skupina ${tag.name} nemá text`);
+  }
+});
+
+// Úvod, autentizace, chyby a ochrana osobních údajů (ZADANI část 7).
+
+/** Kapitoly úvodu podle nadpisů první úrovně; ukázky kódu se za nadpisy nepočítají. */
+function introChapters(description) {
+  const chapters = [];
+  let fenced = false;
+  for (const line of description.split('\n')) {
+    if (/^(```|~~~)/.test(line)) fenced = !fenced;
+    const heading = fenced ? null : /^# (.+)$/.exec(line);
+    if (heading) chapters.push({ title: heading[1], body: '' });
+    else if (chapters.length > 0) chapters.at(-1).body += `${line}\n`;
+  }
+  return chapters;
+}
+
+/** Kapitola úvodu s daným nadpisem; když v úvodu není, test selže. */
+function introChapter(file, spec, title) {
+  const chapter = introChapters(spec.info.description).find((candidate) => candidate.title === title);
+  assert.ok(chapter, `${file}: úvod nemá kapitolu ${title}`);
+  return chapter;
+}
+
+test('přehled operací v úvodu odkazuje na všech pět operací synchronizace katalogu', async () => {
+  const catalogSync = [
+    'products/POST/products/catalog',
+    'products/GET/products/catalog',
+    'products/GET/files/{fileName}',
+    'codelist/GET/codelists/countries',
+    'codelist/GET/codelists/currencies',
+  ];
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const [intro] = introChapters(spec.info.description);
+    for (const operation of catalogSync) {
+      assert.ok(intro.body.includes(`](#${environment.slug}/tag/${operation})`), `${file}: úvod neodkazuje na ${operation}`);
+    }
+  }
+});
+
+test('kapitola o autentizaci ukazuje token endpoint prostředí, postup v eD SHOPu a přihlašovací údaje jen jako zástupné hodnoty', async () => {
+  const placeholders = { client_id: '{clientId}', client_secret: '{clientSecret}', username: '{username}', password: '{password}', refresh_token: '{refreshToken}' };
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const title = file.startsWith('en/') ? 'Authentication' : 'Autentizace';
+    const chapter = introChapter(file, spec, title);
+    assert.ok(chapter.body.includes(`'${environment.tokenUrl}'`), `${file}: ukázka nevolá ${environment.tokenUrl}`);
+    assert.ok(chapter.body.includes('https://edshopb2b.edsystem.cz'), `${file}: chybí adresa eD SHOPu`);
+    // Portál se píše „eD SHOP“; adresy v odkazech se nepočítají.
+    for (const [name] of chapter.body.matchAll(/(?<![/.\w])ed ?shop(?![\w.])/gi)) assert.equal(name, 'eD SHOP', file);
+    const sent = [...stringsOf(spec).join('\n').matchAll(/\b(client_id|client_secret|username|password|refresh_token)=([^\s'"&]*)/g)];
+    assert.ok(sent.length >= Object.keys(placeholders).length, `${file}: chybí ukázky požadavku na token`);
+    for (const [, parameter, value] of sent) assert.equal(value, placeholders[parameter], `${file}: ${parameter}`);
+  }
+});
+
+test('úvod začíná kapitolou Úvod a končí zásadami ochrany osobních údajů s pěti body', async () => {
+  const expected = {
+    cs: { titles: ['Úvod', 'Autentizace', 'Chyby', 'Ochrana osobních údajů'], settings: /jazyka ukázek kódu/ },
+    en: { titles: ['Introduction', 'Authentication', 'Errors', 'Privacy policy'], settings: /code sample language/ },
+  };
+  for (const [file, spec] of await builtSpecs()) {
+    const { titles, settings } = expected[file.startsWith('en/') ? 'en' : 'cs'];
+    const chapters = introChapters(spec.info.description);
+    assert.deepEqual(chapters.map(({ title }) => title).filter((title) => titles.includes(title)), titles, `${file}: pořadí kapitol`);
+    assert.equal(chapters[0].title, titles[0], file);
+    const policy = chapters.at(-1);
+    assert.equal(policy.title, titles.at(-1), `${file}: zásady nejsou poslední kapitolou`);
+    assert.deepEqual([...policy.body.matchAll(/^\*\*(\d)\. /gm)].map(([, point]) => point), ['1', '2', '3', '4', '5'], file);
+    assert.match(policy.body.split(/^\*\*[34]\. /m)[1], settings, `${file}: bod 3 nezmiňuje jazyk ukázek kódu`);
+    assert.ok(policy.body.includes('https://github.com/edsystemcz/dropshippingApiDocs/issues'), `${file}: chybí odkaz na issues`);
+  }
+});
+
+test('jediný kontakt je adresa zákaznické péče v oddílu Podpora a oddíl říká, co k hlášení přiložit', async () => {
+  const email = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
+  for (const [file, spec] of await builtSpecs()) {
+    const [title, section] = file.startsWith('en/') ? ['Errors', 'Support'] : ['Chyby', 'Podpora'];
+    const chapter = introChapter(file, spec, title);
+    const support = chapter.body.split(`\n## ${section}\n`)[1]?.split(/^## /m)[0].trim();
+    assert.ok(support, `${file}: kapitola ${title} nemá oddíl ${section}`);
+    assert.deepEqual([...new Set(support.match(email))], ['customercare@edsystem.cz'], file);
+    for (const field of ['transactionId', 'fileName', 'state', 'stateChanged', 'errorCode', 'errorMessage']) {
+      assert.ok(support.includes(`\`${field}\``), `${file}: oddíl ${section} nezmiňuje ${field}`);
+    }
+    const elsewhere = stringsOf({ ...spec, info: { ...spec.info, description: spec.info.description.replace(support, '') } });
+    assert.deepEqual(elsewhere.flatMap((text) => text.match(email) ?? []), [], `${file}: e-mailová adresa mimo oddíl ${section}`);
+  }
+});
+
 // Anglická verze a české rozhraní Scalaru (ZADANI část 16).
 
 test('build nehlásí žádný nepřeložený řetězec ani text bez protějšku v druhém jazyce', () => {
