@@ -403,6 +403,137 @@ test('doplněk pro operaci, která není v žádném prostředí, shodí build a
   await assert.rejects(readFile(join(inputs.outDir, 'openapi.prod.json')), { code: 'ENOENT' });
 });
 
+/** Číselník se stránkovacími parametry bez popisu, jak je má backend. */
+const pagedCodelist = () => ({
+  '/codelists/countries': {
+    get: operation('Codelist', {
+      parameters: [
+        { name: 'Take', in: 'query', schema: { maximum: 1000, minimum: 1, type: 'integer', format: 'int32' } },
+        { name: 'Skip', in: 'query', schema: { minimum: 0, type: 'integer', format: 'int32' } },
+      ],
+    }),
+  },
+});
+
+test('doplněk parametru se sloučí do parametru se stejným názvem a umístěním; ostatní parametry a jejich schémata zůstanou', async () => {
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', pagedCodelist());
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    overlays: {
+      'codelists.json': {
+        paths: { '/codelists/countries': { get: { parameters: [{ name: 'Skip', in: 'query', description: 'Počet položek, které se přeskočí.' }] } } },
+      },
+    },
+  });
+
+  await run(inputs);
+
+  assert.deepEqual((await readJson(inputs.outDir, 'openapi.prod.json')).paths['/codelists/countries'].get.parameters, [
+    { name: 'Take', in: 'query', schema: { maximum: 1000, minimum: 1, type: 'integer', format: 'int32' } },
+    { name: 'Skip', in: 'query', schema: { minimum: 0, type: 'integer', format: 'int32' }, description: 'Počet položek, které se přeskočí.' },
+  ]);
+});
+
+test('doplněk parametru, který v prostředí není, se tam přeskočí; když není v žádném, shodí build', async () => {
+  const withoutSkip = pagedCodelist();
+  withoutSkip['/codelists/countries'].get.parameters.pop();
+  const describeSkip = (location) => ({
+    'codelists.json': {
+      paths: { '/codelists/countries': { get: { parameters: [{ name: 'Skip', in: location, description: 'Počet položek, které se přeskočí.' }] } } },
+    },
+  });
+  const inputs = await project({
+    specs: {
+      prod: sourceSpec('Dropshipping API Gateway service, build: 1.1.122', withoutSkip),
+      test: sourceSpec('Dropshipping API Gateway service, build: 1.1.123', pagedCodelist()),
+    },
+    overlays: describeSkip('query'),
+  });
+
+  const { output } = await run(inputs);
+
+  assert.deepEqual((await readJson(inputs.outDir, 'openapi.prod.json')).paths['/codelists/countries'].get.parameters, withoutSkip['/codelists/countries'].get.parameters);
+  assert.equal((await readJson(inputs.outDir, 'openapi.test.json')).paths['/codelists/countries'].get.parameters[1].description, 'Počet položek, které se přeskočí.');
+  assert.match(output, /^INFO PROD: .*overlay\/codelists\.json: GET \/codelists\/countries.*Skip/m);
+
+  // Parametr Skip v hlavičce není v žádném prostředí.
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', pagedCodelist());
+  const nowhere = await project({ specs: { prod: spec, test: spec }, overlays: describeSkip('header') });
+  await assert.rejects(run(nowhere), /overlay\/codelists\.json: GET \/codelists\/countries.*Skip/);
+});
+
+/** Typy obsahu, které backend v ASP.NET uvádí u každého těla požadavku a odpovědi se stejným schématem. */
+const aspNetContent = (schema, types = ['text/plain', 'application/json', 'text/json']) => Object.fromEntries(types.map((type) => [type, { schema }]));
+
+test('příklad u application/json platí i pro ostatní typy obsahu se stejným schématem, v odpovědi i v těle požadavku', async () => {
+  const body = { type: 'object', properties: { catalogType: { type: 'string' } } };
+  const result = { type: 'object', properties: { transactionId: { type: 'string' } } };
+  const paths = {
+    '/products/catalog': {
+      post: operation('Products', {
+        requestBody: { content: aspNetContent(body, ['application/json', 'text/json', 'application/*+json']) },
+        responses: { 202: { description: 'Success', content: aspNetContent(result) } },
+      }),
+    },
+  };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths);
+  const examples = { full: { summary: 'Full katalog', value: { catalogType: 'Full' } } };
+  const example = { transactionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6' };
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    overlays: {
+      'products.json': {
+        paths: {
+          '/products/catalog': {
+            post: {
+              requestBody: { content: { 'application/json': { examples } } },
+              responses: { 202: { content: { 'application/json': { example } } } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  await run(inputs);
+
+  const { requestBody, responses } = (await readJson(inputs.outDir, 'openapi.prod.json')).paths['/products/catalog'].post;
+  assert.deepEqual(requestBody.content, {
+    'application/json': { schema: body, examples },
+    'text/json': { schema: body, examples },
+    'application/*+json': { schema: body, examples },
+  });
+  assert.deepEqual(responses[202].content, {
+    'text/plain': { schema: result, example },
+    'application/json': { schema: result, example },
+    'text/json': { schema: result, example },
+  });
+});
+
+test('příklad u application/json se nepřevezme tam, kde je jiné schéma, vlastní příklad nebo XML', async () => {
+  const states = { type: 'array', items: { type: 'object' } };
+  const content = {
+    'text/plain': { schema: { type: 'string' } },
+    'application/json': { schema: states },
+    'text/json': { schema: states, example: [{ state: 'Error' }] },
+    'application/xml': { schema: states },
+  };
+  const paths = { '/products/catalog': { get: operation('Products', { responses: { 200: { description: 'Success', content } } }) } };
+  const spec = sourceSpec('Dropshipping API Gateway service, build: 1.1.122', paths);
+  const generated = [{ state: 'Generated' }];
+  const inputs = await project({
+    specs: { prod: spec, test: spec },
+    overlays: { 'products.json': { paths: { '/products/catalog': { get: { responses: { 200: { content: { 'application/json': { example: generated } } } } } } } } },
+  });
+
+  await run(inputs);
+
+  assert.deepEqual((await readJson(inputs.outDir, 'openapi.test.json')).paths['/products/catalog'].get.responses[200].content, {
+    ...content,
+    'application/json': { schema: states, example: generated },
+  });
+});
+
 const downloadOperation = {
   tags: ['Products'],
   summary: 'Stažení katalogového souboru',

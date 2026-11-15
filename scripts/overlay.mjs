@@ -9,7 +9,11 @@
 // Schémata se v overlay píší zkráceným názvem, tak jak je vidí návštěvník.
 //
 // Klíče se zvláštním významem:
-//   paths       doplňky existujících operací; kde operace není, se přeskočí
+//   paths       doplňky existujících operací; kde operace není, se přeskočí.
+//               Parametry (`parameters`) se párují podle `name` a `in`:
+//               doplněk parametru se sloučí do parametru se stejným názvem
+//               a umístěním, ostatní parametry zůstanou. Parametr, který
+//               v operaci není, se nepřidá a doplněk se přeskočí
 //   components  doplňky existujících komponent (schémat, schémat zabezpečení);
 //               kde komponenta není, se přeskočí
 //   tags        pořadí a zobrazované názvy skupin (x-displayName); skupina bez
@@ -17,11 +21,17 @@
 //   newPaths    operace, které ve specifikaci chybějí; přidají se všude
 //   schemaNames vlastní název schématu (celý název → název na webu) pro
 //               schémata, která by po zkrácení měla stejný název
-// Doplněk z paths, components, tags nebo schemaNames, který nesedí na žádné
-// prostředí, shodí build. Ostatní klíče (například servers) se slučují všude.
+// Doplněk z paths (včetně doplňku parametru), components, tags nebo
+// schemaNames, který nesedí na žádné prostředí, shodí build. Ostatní klíče
+// (například servers) se slučují všude.
+//
+// Příklad se píše jen k typu obsahu `application/json`; ostatní typy obsahu
+// téhož těla nebo odpovědi se stejným schématem (`text/plain`, `text/json`,
+// `application/*+json`) ho po sloučení převezmou, pokud vlastní nemají.
 
 import { readFile, readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { environmentLabel, environmentValues } from './environments.mjs';
 import { HTTP_METHODS, mapStrings, operations } from './openapi.mjs';
 import { fillPlaceholders } from './placeholders.mjs';
@@ -38,6 +48,29 @@ function mergePatch(target, patch) {
   for (const [key, value] of Object.entries(patch)) {
     if (value === null) delete result[key];
     else result[key] = mergePatch(result[key], value);
+  }
+  return result;
+}
+
+/**
+ * Sloučí doplněk do existující operace jako `mergePatch`, jen parametry se
+ * párují podle `name` a `in`: doplněk parametru se sloučí do parametru se
+ * stejným názvem a umístěním a ostatní parametry zůstanou. Celé pole by
+ * jinak nahradil a zmrazil by schémata parametrů z backendu.
+ *
+ * `parameterMatched(target, exists)` dostane každý doplněk parametru a řekne,
+ * jestli se má použít; parametr, který v operaci není, se nepřidá.
+ */
+function patchOperation(operation, patch, target, parameterMatched) {
+  if (!Array.isArray(patch.parameters)) return mergePatch(operation, patch);
+  const { parameters, ...rest } = patch;
+  const result = mergePatch(operation, rest);
+  result.parameters = [...(operation.parameters ?? [])];
+  for (const parameterPatch of parameters) {
+    const index = result.parameters.findIndex(({ name, in: location }) => name === parameterPatch.name && location === parameterPatch.in);
+    if (parameterMatched(`${target} › parametr ${parameterPatch.name} (${parameterPatch.in})`, index !== -1)) {
+      result.parameters[index] = mergePatch(result.parameters[index], parameterPatch);
+    }
   }
   return result;
 }
@@ -93,6 +126,29 @@ function addHeaderSchemas(spec) {
   }
 }
 
+/** Typy obsahu, do kterých backend v ASP.NET píše tentýž JSON jako do `application/json`. */
+const JSON_LIKE = /json|^text\/plain$/;
+
+/**
+ * Převezme příklad z `application/json` do ostatních typů obsahu téhož těla
+ * požadavku nebo odpovědi, které mají stejné schéma a vlastní příklad nemají.
+ * Backend uvádí u každé odpovědi i `text/plain` a `text/json` a Scalar ukazuje
+ * jako výchozí první typ obsahu, takže příklad zapsaný jen u `application/json`
+ * by na webu nebyl vidět. Upravuje předanou specifikaci.
+ */
+function shareJsonExamples(spec) {
+  const bodies = [...operations(spec)].flatMap(({ operation }) => [operation.requestBody, ...Object.values(operation.responses ?? {})]);
+  for (const content of bodies.map((body) => body?.content).filter(Boolean)) {
+    const source = content['application/json'];
+    const sample = source && (Object.hasOwn(source, 'examples') ? { examples: source.examples } : Object.hasOwn(source, 'example') ? { example: source.example } : null);
+    if (!sample) continue;
+    for (const [type, media] of Object.entries(content)) {
+      const hasExample = Object.hasOwn(media, 'example') || Object.hasOwn(media, 'examples');
+      if (JSON_LIKE.test(type) && !hasExample && isDeepStrictEqual(media.schema, source.schema)) Object.assign(media, structuredClone(sample));
+    }
+  }
+}
+
 /** Soubory overlay v abecedním pořadí: `{name, content}`, kde `name` je cesta pro hlášení. */
 export async function readOverlays(overlayDir) {
   const names = (await readdir(overlayDir)).filter((name) => name.endsWith('.json')).sort();
@@ -110,7 +166,9 @@ export async function readOverlays(overlayDir) {
 
 /**
  * Upraví specifikace všech prostředí: zkrátí názvy schémat, doplní schéma
- * hlavičkám bez schématu a sloučí doplňky z overlay (pravidla v hlavičce modulu).
+ * hlavičkám bez schématu, sloučí doplňky z overlay a příklady u
+ * `application/json` převezme do ostatních typů obsahu se stejným schématem
+ * (pravidla v hlavičce modulu).
  *
  * Doplněk pro operaci, která v prostředí není, se tam přeskočí (nová operace
  * se obvykle objeví nejdřív v TEST, docs/adr/0004). Doplněk, který nesedí na
@@ -157,9 +215,9 @@ export function applyOverlays({ specs, environments, overlays, log }) {
       if (!exists) log.info(`${label}: doplněk ${target} přeskočen, ${missing}`);
       return exists;
     };
-    /** Sloučí doplněk do `parent[key]`; když tam cíl není, doplněk přeskočí. */
-    const patchExisting = (parent, key, patch, target, missing) => {
-      if (matched(target, Boolean(parent?.[key]), missing)) parent[key] = mergePatch(parent[key], patch);
+    /** Sloučí doplněk do `parent[key]` funkcí `merge`; když tam cíl není, doplněk přeskočí. */
+    const patchExisting = (parent, key, patch, target, missing, merge = mergePatch) => {
+      if (matched(target, Boolean(parent?.[key]), missing)) parent[key] = merge(parent[key], patch);
     };
     // Skupiny se stejně jako jiná pole nahrazují celé: platí poslední soubor, který je uvádí.
     let tags = null;
@@ -172,7 +230,11 @@ export function applyOverlays({ specs, environments, overlays, log }) {
       }
       for (const [path, item] of Object.entries(paths ?? {})) {
         for (const [method, patch] of Object.entries(item)) {
-          patchExisting(spec.paths[path], method, patch, `${name}: ${method.toUpperCase()} ${path}`, 'operace v prostředí není');
+          const target = `${name}: ${method.toUpperCase()} ${path}`;
+          const parameterMatched = (parameter, exists) => matched(parameter, exists, 'parametr v operaci není');
+          patchExisting(spec.paths[path], method, patch, target, 'operace v prostředí není', (operation) =>
+            patchOperation(operation, patch, target, parameterMatched),
+          );
         }
       }
       for (const [path, item] of Object.entries(newPaths ?? {})) {
@@ -190,6 +252,7 @@ export function applyOverlays({ specs, environments, overlays, log }) {
       if (rest.tags) tags = { file: name, list: rest.tags };
       spec = mergePatch(spec, rest);
     }
+    shareJsonExamples(spec);
     if (tags) {
       // Skupinu tvoří operace; skupina bez operací by v menu zůstala prázdná.
       const groups = new Set([...operations(spec)].flatMap(({ operation }) => operation.tags ?? []));

@@ -413,19 +413,14 @@ test('ve výsledné specifikaci nezůstal zástupný symbol, odkaz na soubor s t
   }
 });
 
-test('popis číselníku měn ukazuje v příkladu adresu API svého prostředí', async () => {
-  for (const [file, spec, environment] of await builtSpecs()) {
-    const { description } = spec.paths['/codelists/currencies'].get;
-    assert.ok(description.includes(`'${environment.baseUrl}/codelists/currencies`), `${file}: příklad nevolá ${environment.baseUrl}`);
-  }
-});
+/** Oddíly popisu operace v pořadí podle šablony (ZADANI část 14). */
+const TEMPLATE_SECTIONS = {
+  cs: ['Kdy ji volat', 'Na co si dát pozor', 'Příklad', 'Časté chyby'],
+  en: ['When to call it', 'What to watch out for', 'Example', 'Common errors'],
+};
 
 test('šablona popisu operace existuje v obou jazycích, má jednotnou osnovu a na web se nedostane', async () => {
-  const outline = {
-    cs: ['Kdy ji volat', 'Na co si dát pozor', 'Příklad', 'Časté chyby'],
-    en: ['When to call it', 'What to watch out for', 'Example', 'Common errors'],
-  };
-  for (const [language, sections] of Object.entries(outline)) {
+  for (const [language, sections] of Object.entries(TEMPLATE_SECTIONS)) {
     const template = await readFile(join(repoRoot, 'content', language, '_sablona-operace.md'), 'utf8');
     // Popis operace je text pod čarou; první odstavec říká, k čemu operace slouží.
     const body = template.slice(template.indexOf('\n---\n') + '\n---\n'.length);
@@ -465,17 +460,23 @@ function introChapter(file, spec, title) {
   return chapter;
 }
 
+/**
+ * Operace synchronizace katalogu: skupina, metoda, cesta a soubor s popisem.
+ * Úvod je vyjmenovává v přehledu a jejich popisy jsou vzorem pro další.
+ */
+const CATALOG_OPERATIONS = [
+  { group: 'products', method: 'post', path: '/products/catalog', file: 'post__products_catalog.md' },
+  { group: 'products', method: 'get', path: '/products/catalog', file: 'get__products_catalog.md' },
+  { group: 'products', method: 'get', path: '/files/{fileName}', file: 'get__files_{fileName}.md' },
+  { group: 'codelist', method: 'get', path: '/codelists/countries', file: 'get__codelists_countries.md' },
+  { group: 'codelist', method: 'get', path: '/codelists/currencies', file: 'get__codelists_currencies.md' },
+];
+
 test('přehled operací v úvodu odkazuje na všech pět operací synchronizace katalogu', async () => {
-  const catalogSync = [
-    'products/POST/products/catalog',
-    'products/GET/products/catalog',
-    'products/GET/files/{fileName}',
-    'codelist/GET/codelists/countries',
-    'codelist/GET/codelists/currencies',
-  ];
   for (const [file, spec, environment] of await builtSpecs()) {
     const [intro] = introChapters(spec.info.description);
-    for (const operation of catalogSync) {
+    for (const { group, method, path } of CATALOG_OPERATIONS) {
+      const operation = `${group}/${method.toUpperCase()}${path}`;
       assert.ok(intro.body.includes(`](#${environment.slug}/tag/${operation})`), `${file}: úvod neodkazuje na ${operation}`);
     }
   }
@@ -607,24 +608,29 @@ test('časté otázky výklad neopakují: každá odpověď je krátká a odkazu
   }
 });
 
-test('česká a anglická kapitola úvodu mají stejnou osnovu', async () => {
-  const outline = (markdown) => {
-    const lines = markdown.replace(FENCED_BLOCK, '```').split('\n');
-    return {
-      headings: lines.flatMap((line) => /^(#+) /.exec(line)?.[1].length ?? []),
-      codeBlocks: codeBlocks(markdown).length,
-      tableRows: lines.filter((line) => line.startsWith('|')).length,
-      listItems: lines.filter((line) => /^\s*([-*+]|\d+\.) /.test(line)).length,
-      links: lines.join('\n').split('](').length - 1,
-    };
+/** Osnova textu pro porovnání jazyků: úrovně nadpisů a počty bloků kódu, řádků tabulek, položek seznamů a odkazů. */
+function textOutline(markdown) {
+  const lines = markdown.replace(FENCED_BLOCK, '```').split('\n');
+  return {
+    headings: lines.flatMap((line) => /^(#+) /.exec(line)?.[1].length ?? []),
+    codeBlocks: codeBlocks(markdown).length,
+    tableRows: lines.filter((line) => line.startsWith('|')).length,
+    listItems: lines.filter((line) => /^\s*([-*+]|\d+\.) /.test(line)).length,
+    links: lines.join('\n').split('](').length - 1,
   };
-  const english = new Map(await contentFiles('en/intro'));
-  for (const [path, markdown] of await contentFiles('cs/intro')) {
+}
+
+/** Porovná osnovu českých textů ve složce `subdir` s anglickými protějšky. */
+async function assertSameOutline(subdir) {
+  const english = new Map(await contentFiles(`en/${subdir}`));
+  for (const [path, markdown] of await contentFiles(`cs/${subdir}`)) {
     const counterpart = path.replace(/^cs\//, 'en/');
     assert.ok(english.has(counterpart), `content/${counterpart} chybí`);
-    assert.deepEqual(outline(english.get(counterpart)), outline(markdown), `content/${path} a ${counterpart}`);
+    assert.deepEqual(textOutline(english.get(counterpart)), textOutline(markdown), `content/${path} a ${counterpart}`);
   }
-});
+}
+
+test('česká a anglická kapitola úvodu mají stejnou osnovu', () => assertSameOutline('intro'));
 
 test('jediný kontakt je adresa zákaznické péče v oddílu Podpora a oddíl říká, co k hlášení přiložit', async () => {
   const email = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
@@ -640,6 +646,95 @@ test('jediný kontakt je adresa zákaznické péče v oddílu Podpora a oddíl �
     }
     const elsewhere = stringsOf({ ...spec, info: { ...spec.info, description: spec.info.description.replace(support, '') } });
     assert.deepEqual(elsewhere.flatMap((text) => text.match(email) ?? []), [], `${file}: e-mailová adresa mimo oddíl ${section}`);
+  }
+});
+
+// Popisy pěti operací synchronizace katalogu (ZADANI část 7 a 14).
+
+/** Smyšlený identifikátor v názvu katalogového souboru; skutečný v příkladech být nesmí (ZADANI část 7). */
+const FICTIONAL_FILE_ID = '1000001';
+
+/** Hodnoty pojmenovaných příkladů (`examples`) u typu obsahu. */
+const exampleValues = (media) => Object.values(media.examples ?? {}).map(({ value }) => value);
+
+test('popisy pěti operací dodržují osnovu šablony a česká i anglická verze mají stejnou osnovu', async () => {
+  for (const [language, sections] of Object.entries(TEMPLATE_SECTIONS)) {
+    for (const { file } of CATALOG_OPERATIONS) {
+      const markdown = (await readFile(join(repoRoot, 'content', language, 'operations', file), 'utf8')).replace(FENCED_BLOCK, '```');
+      const where = `content/${language}/operations/${file}`;
+      assert.match(markdown, /^[^#\s]/, `${where}: popis nezačíná odstavcem o účelu operace`);
+      const headings = [...markdown.matchAll(/^(#+) (.+)$/gm)].map(([, level, heading]) => `${level} ${heading}`);
+      // Oddíly jen ze šablony, v jejím pořadí; oddíl bez obsahu smí chybět, příklad ne.
+      assert.deepEqual(headings, sections.filter((section) => headings.includes(`## ${section}`)).map((section) => `## ${section}`), `${where}: oddíly nejsou podle šablony`);
+      assert.ok(headings.includes(`## ${sections[2]}`), `${where}: chybí oddíl ${sections[2]}`);
+    }
+  }
+  await assertSameOutline('operations');
+});
+
+test('build u pěti operací katalogu a číselníků nehlásí v žádném jazyce ani prostředí varování', () => {
+  const paths = [...new Set(CATALOG_OPERATIONS.map(({ path }) => path))];
+  assert.deepEqual(warnings.filter((message) => paths.some((path) => message.includes(path))), []);
+});
+
+test('každá z pěti operací má příklad požadavku na adresu API zvoleného prostředí a příklad odpovědi', async () => {
+  for (const [file, spec, environment] of await builtSpecs()) {
+    for (const { method, path } of CATALOG_OPERATIONS) {
+      const operation = spec.paths[path][method];
+      const label = `${file}: ${method.toUpperCase()} ${path}`;
+      // Příklad volá cestu s dosazenou hodnotou parametru, ověřuje se jen část před ním.
+      const call = `curl -X ${method.toUpperCase()} '${environment.baseUrl}${path.replace(/\{\w+\}/g, '')}`;
+      assert.ok(operation.description.includes(call), `${label}: popis nemá příklad ${call}…`);
+      const [, success] = Object.entries(operation.responses).find(([status]) => status.startsWith('2'));
+      // Katalogový soubor je binární ZIP; příklad odpovědi má smysl jen u JSON.
+      const json = Object.entries(success.content).filter(([, media]) => media.schema.format !== 'binary');
+      for (const [type, media] of json) assert.ok(Object.hasOwn(media, 'example') || Object.hasOwn(media, 'examples'), `${label}: odpověď ${type} nemá příklad`);
+    }
+    const bodies = spec.paths['/products/catalog'].post.requestBody.content;
+    for (const [type, media] of Object.entries(bodies)) {
+      const values = exampleValues(media);
+      assert.ok(values.some((value) => value.catalogType === 'Full') && values.some((value) => value.catalogType === 'Update'), `${file}: tělo ${type} nemá příklad Full a Update`);
+    }
+  }
+});
+
+test('zjištění stavu jobu má příklady pro čekající job, zpracovávaný job a vygenerovaný soubor, vždy jako pole', async () => {
+  for (const [file, spec] of await builtSpecs()) {
+    const { content } = spec.paths['/products/catalog'].get.responses[200];
+    for (const [type, media] of Object.entries(content)) {
+      const values = exampleValues(media);
+      assert.ok(values.every(Array.isArray), `${file}: ${type}: příklad není pole`);
+      assert.deepEqual(values.map((value) => value.map(({ state }) => state)), [['Undefined'], ['InProcess'], ['Generated']], `${file}: ${type}`);
+      assert.match(values[2][0].fileName ?? '', /\.ZIP$/i, `${file}: ${type}: vygenerovaný soubor nemá fileName`);
+    }
+  }
+});
+
+test('název katalogového souboru nese v příkladech a popisech smyšlený identifikátor', async () => {
+  for (const [file, spec] of await builtSpecs()) {
+    const ids = [...JSON.stringify(spec).matchAll(/pricelist_\d+_(\d+)_/g)].map(([, id]) => id);
+    // Příklad odpovědi se stavem Generated, ukázka parametru fileName a příklad v popisu stažení.
+    assert.ok(ids.length >= 3, `${file}: příklady nemají název katalogového souboru`);
+    assert.deepEqual([...new Set(ids)], [FICTIONAL_FILE_ID], file);
+  }
+});
+
+test('popis založení jobu říká, že pole regionMask, regionZeroIncluded a canceled se v popsané integraci neposílají', async () => {
+  for (const [file, spec] of await builtSpecs()) {
+    const sentence = spec.paths['/products/catalog'].post.description.split(/(?<=\.)\s+/).find((candidate) => candidate.includes('`regionMask`'));
+    assert.ok(sentence, `${file}: popis nezmiňuje regionMask`);
+    for (const field of ['regionZeroIncluded', 'canceled']) assert.ok(sentence.includes(`\`${field}\``), `${file}: věta nezmiňuje ${field}`);
+    assert.match(sentence, languageOf(file) === 'en' ? /are not sent/ : /se .*neposílají/, file);
+  }
+});
+
+test('popis zjištění stavu jobu vysvětluje každý stav z výčtu a pro vyhodnocení odkazuje na Konec jobu', async () => {
+  const endOfJob = { cs: 'konec-jobu', en: 'when-a-job-ends' };
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const { description } = spec.paths['/products/catalog'].get;
+    const states = spec.components.schemas.State.enum;
+    assert.deepEqual(states.filter((state) => !new RegExp(`^\\| \`${state}\` +\\| \\S`, 'm').test(description)), [], `${file}: stavy bez vysvětlení`);
+    assert.ok(description.includes(`](#${environment.slug}/description/${endOfJob[languageOf(file)]})`), `${file}: popis neodkazuje na Konec jobu`);
   }
 });
 

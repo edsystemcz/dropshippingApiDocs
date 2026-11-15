@@ -1,0 +1,44 @@
+{
+  "paths": {
+    "/codelists/countries": {
+      "get": {
+        "parameters": [
+          { "name": "Take", "in": "query", "description": "Největší počet vrácených položek.", "example": 1000 },
+          { "name": "Skip", "in": "query", "description": "Počet položek, které se přeskočí.", "example": 0 }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  { "id": 52, "code": "CZ", "name": "Czech Republic" },
+                  { "id": 199, "code": "SK", "name": "Slovakia" }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codelists/currencies": {
+      "get": {
+        "parameters": [
+          { "name": "Take", "in": "query", "description": "Největší počet vrácených položek.", "example": 1000 },
+          { "name": "Skip", "in": "query", "description": "Počet položek, které se přeskočí.", "example": 0 }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  { "id": "8", "code": "CZK", "name": "CZK" },
+                  { "id": "12", "code": "EUR", "name": "EUR" }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

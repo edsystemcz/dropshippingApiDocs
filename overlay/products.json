@@ -1,21 +1,136 @@
 {
   "paths": {
     "/products/catalog": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "full": {
+                  "summary": "Full katalog, výchozí český profil",
+                  "value": { "catalogType": "Full" }
+                },
+                "update": {
+                  "summary": "Update katalog, výchozí český profil",
+                  "value": { "catalogType": "Update" }
+                },
+                "update-on-stock": {
+                  "summary": "Update katalog jen s produkty skladem",
+                  "value": { "catalogType": "Update", "onStock": true }
+                },
+                "update-explicit-cz": {
+                  "summary": "Update katalog s explicitním českým nastavením",
+                  "value": { "catalogType": "Update", "countryIdFee": 52, "currencyId": 8 }
+                },
+                "update-sk-eur": {
+                  "summary": "Update katalog, slovenský zákazník s cenami v EUR",
+                  "value": { "catalogType": "Update", "currencyId": 12, "countryIdFee": 199 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Job byl založen.",
+            "content": {
+              "application/json": {
+                "example": { "transactionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6" }
+              }
+            }
+          }
+        }
+      },
       "get": {
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "query",
+            "description": "Identifikátor jobu, který vrátila operace `POST /products/catalog`.",
+            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+          }
+        ],
         "responses": {
           "200": {
+            "description": "Stav jobu.",
             "content": {
               "text/plain": {
                 "schema": { "$ref": null, "type": "array", "items": { "$ref": "#/components/schemas/ProductCatalogModel" } }
               },
               "application/json": {
-                "schema": { "$ref": null, "type": "array", "items": { "$ref": "#/components/schemas/ProductCatalogModel" } }
+                "schema": { "$ref": null, "type": "array", "items": { "$ref": "#/components/schemas/ProductCatalogModel" } },
+                "examples": {
+                  "pending": {
+                    "summary": "Job čeká na spuštění",
+                    "value": [
+                      {
+                        "state": "Undefined",
+                        "transactionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                      }
+                    ]
+                  },
+                  "in-process": {
+                    "summary": "Job se zpracovává",
+                    "value": [
+                      {
+                        "state": "InProcess",
+                        "stateChanged": "2026-05-21T11:31:00.827",
+                        "transactionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                      }
+                    ]
+                  },
+                  "generated": {
+                    "summary": "Katalogový soubor je vygenerovaný",
+                    "value": [
+                      {
+                        "state": "Generated",
+                        "stateChanged": "2026-05-21T13:43:39.683",
+                        "fileName": "pricelist_7_1000001_21052026134339_0d5a33c8-1fac-4272-8ef5-5aeb5c6addfa.ZIP",
+                        "transactionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                      }
+                    ]
+                  }
+                }
               },
               "text/json": {
                 "schema": { "$ref": null, "type": "array", "items": { "$ref": "#/components/schemas/ProductCatalogModel" } }
               }
             }
           }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CatalogType": {
+        "description": "Typ katalogu. Na velikosti písmen nezáleží."
+      },
+      "CreateProductCatalogModel": {
+        "properties": {
+          "countryIdFee": {
+            "description": "ID země poplatků. Když pole neuvedete, použije se `52` (Česká republika)."
+          },
+          "currencyId": {
+            "description": "ID měny. Když pole neuvedete, použije se `8` (CZK)."
+          }
+        }
+      },
+      "ProductGenerateCatalogResultModel": {
+        "properties": {
+          "transactionId": { "description": "Identifikátor jobu." }
+        }
+      },
+      "State": {
+        "description": "Aktuální stav jobu."
+      },
+      "ProductCatalogModel": {
+        "properties": {
+          "stateChanged": { "description": "Čas poslední změny stavu jobu. Nemusí být vždy vyplněný." },
+          "errorCode": { "description": "Chybový kód, pokud job skončil chybou." },
+          "errorMessage": { "description": "Popis chyby, pokud job skončil chybou." },
+          "fileName": { "description": "Název katalogového souboru. Vyplňuje se obvykle až ve stavu `Generated`." },
+          "transactionId": { "description": "Identifikátor jobu." }
         }
       }
     }
@@ -31,23 +146,24 @@
             "in": "path",
             "required": true,
             "description": "Název souboru přesně tak, jak ho vrátilo zjištění stavu jobu (`GET /products/catalog`) v poli `fileName`.",
+            "example": "pricelist_7_1000001_21052026134339_0d5a33c8-1fac-4272-8ef5-5aeb5c6addfa.ZIP",
             "schema": { "type": "string" }
           }
         ],
         "responses": {
           "200": {
-            "description": "Katalogový soubor: ZIP s právě jedním XML souborem v kódování UTF-8.",
+            "description": "Katalogový soubor.",
             "content": {
               "application/zip": { "schema": { "type": "string", "format": "binary" } },
               "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }
             }
           },
-          "400": { "description": "Neplatný požadavek." },
-          "401": { "description": "Token chybí, je neplatný nebo vypršel." },
-          "403": { "description": "Neplatné volání, například chybí název souboru." },
-          "404": { "description": "Soubor nebyl nalezen, například kvůli chybnému názvu nebo vypršení platnosti." },
-          "500": { "description": "Interní chyba serveru." },
-          "503": { "description": "Služba je dočasně nedostupná." }
+          "400": { "description": "Chybný požadavek" },
+          "401": { "description": "Neautorizováno" },
+          "403": { "description": "Zakázáno" },
+          "404": { "description": "Nenalezeno" },
+          "500": { "description": "Interní chyba serveru" },
+          "503": { "description": "Služba je nedostupná" }
         }
       }
     }
