@@ -99,7 +99,7 @@ Hodnotu `True` API nevrací a element v obchodní logice nepoužívejte. Produkt
 
 Vyřazené produkty proto poznáte jen porovnáním dvou Full katalogů:
 
-1. Zvolte [běžný katalogový profil](30-synchronizace-katalogu.md#katalogový-profil) bez `onStock=true`.
+1. Full katalogy pro porovnání zakládejte jen s `catalogType`, bez volitelných parametrů `currencyId`, `countryIdFee` a `onStock`.
 2. Vygenerujte Full katalog a uložte si seznam jeho produktů.
 3. Později vygenerujte další Full katalog se zcela stejným profilem.
 4. Porovnejte předchozí a aktuální Full katalog.

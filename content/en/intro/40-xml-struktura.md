@@ -99,7 +99,7 @@ The API does not return the value `True`; do not use the element in business log
 
 You can therefore detect discontinued products only by comparing two Full catalogs:
 
-1. Select a [routine catalog profile](30-synchronizace-katalogu.md#catalog-profile) without `onStock=true`.
+1. Start the Full catalogs for the comparison with `catalogType` only, without the optional `currencyId`, `countryIdFee` and `onStock` parameters.
 2. Generate a Full catalog and store the list of its products.
 3. Later, generate another Full catalog with exactly the same profile.
 4. Compare the previous and the current Full catalog.
