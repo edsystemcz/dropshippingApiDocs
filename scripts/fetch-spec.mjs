@@ -4,7 +4,7 @@
 // Výpadek API ani neplatná odpověď nejsou chyba: uložená kopie zůstane,
 // skript vypíše varování a skončí úspěšně, aby se web dal sestavit dál.
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { environmentLabel } from './environments.mjs';
@@ -86,8 +86,38 @@ export async function fetchSpecs({ environments, specDir, fetchImpl = fetch, log
   return results;
 }
 
+/**
+ * Zpráva commitu, kterým workflow uloží změněné specifikace (ZADANI.md, část 11):
+ * jmenuje prostředí a nové číslo buildu.
+ *
+ * @param {Awaited<ReturnType<typeof fetchSpecs>>} results
+ */
+export function commitMessage(results) {
+  const changed = results.filter(({ status }) => status === 'changed');
+  if (changed.length === 0) return null;
+  // Prostředí se stejným buildem se uvedou společně: „PROD a TEST na build 1.1.123“.
+  // Prostředí bez čísla buildu jdou na konec, aby se jim nepřičetl build prostředí před nimi.
+  const byBuild = [...Map.groupBy(changed, ({ build }) => build)];
+  const parts = [...byBuild.filter(([build]) => build), ...byBuild.filter(([build]) => !build)].map(([build, environments]) => {
+    const labels = environments.map(({ slug }) => environmentLabel(slug)).join(' a ');
+    return build ? `${labels} na build ${build}` : labels;
+  });
+  return `chore(spec): aktualizace specifikace ${parts.join(' a ')}`;
+}
+
+/** Text varování musí být na jednom řádku, jinak by jeho další řádky runner četl jako příkazy workflow. */
+const escapeAnnotation = (message) => message.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
   const environments = JSON.parse(await readFile(join(root, 'environments.json'), 'utf8'));
-  await fetchSpecs({ environments, specDir: join(root, 'spec') });
+  // Ve workflow se varování ukáže i v přehledu běhu, ne jen ve výpisu kroku.
+  const log =
+    process.env.GITHUB_ACTIONS === 'true'
+      ? { info: console.log, warn: (message) => console.log(`::warning title=Specifikace::${escapeAnnotation(message)}`) }
+      : console;
+  const results = await fetchSpecs({ environments, specDir: join(root, 'spec'), log });
+  // Workflow podle výstupu pozná, že má změněné specifikace commitnout, a s jakou zprávou.
+  const message = commitMessage(results);
+  if (message && process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `commit-message=${message}\n`);
 }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, stat, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fetchSpecs } from '../scripts/fetch-spec.mjs';
+import { commitMessage, fetchSpecs } from '../scripts/fetch-spec.mjs';
 
 const ENVIRONMENTS = [
   { slug: 'prod', title: 'Dropshipping API - PROD', specUrl: 'https://api.example/swagger.json' },
@@ -146,4 +146,53 @@ test('neplatná odpověď při prvním stažení žádný soubor nevytvoří', a
   const dir = await newDir();
   await run({ ...bothAt('1.1.122'), 'https://api.example/swagger.json': respond('[]') }, dir);
   await assert.rejects(stat(specPath(dir, 'prod')), { code: 'ENOENT' });
+});
+
+test('zpráva commitu jmenuje změněné prostředí a nové číslo buildu', () => {
+  const results = [
+    { slug: 'prod', status: 'unchanged' },
+    { slug: 'test', status: 'changed', build: '1.1.123' },
+  ];
+  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace TEST na build 1.1.123');
+});
+
+test('když se nezměnila žádná specifikace, zpráva commitu není', () => {
+  const results = [
+    { slug: 'prod', status: 'unchanged' },
+    { slug: 'test', status: 'failed' },
+  ];
+  assert.equal(commitMessage(results), null);
+});
+
+test('zpráva commitu při změně obou prostředí na stejný build jmenuje obě a build jednou', () => {
+  const results = [
+    { slug: 'prod', status: 'changed', build: '1.1.123' },
+    { slug: 'test', status: 'changed', build: '1.1.123' },
+  ];
+  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace PROD a TEST na build 1.1.123');
+});
+
+test('zpráva commitu při změně prostředí na různé buildy uvede build u každého prostředí', () => {
+  const results = [
+    { slug: 'prod', status: 'changed', build: '1.1.123' },
+    { slug: 'test', status: 'changed', build: '1.1.124' },
+  ];
+  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace PROD na build 1.1.123 a TEST na build 1.1.124');
+});
+
+test('zpráva commitu u specifikace bez čísla buildu jmenuje jen prostředí', () => {
+  const results = [
+    { slug: 'prod', status: 'changed', build: null },
+    { slug: 'test', status: 'unchanged' },
+  ];
+  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace PROD');
+});
+
+test('zpráva commitu uvede prostředí bez čísla buildu až za prostředími s buildem', () => {
+  const results = [
+    { slug: 'prod', status: 'changed', build: null },
+    { slug: 'test', status: 'changed', build: '1.1.124' },
+  ];
+  // „PROD a TEST na build 1.1.124“ by se četlo, jako by nový build měla obě prostředí.
+  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace TEST na build 1.1.124 a PROD');
 });
