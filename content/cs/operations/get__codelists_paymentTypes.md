@@ -1,0 +1,2 @@
+
+Vrátí číselník plateb.
