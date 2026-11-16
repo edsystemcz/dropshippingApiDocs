@@ -5,8 +5,9 @@
 # nikdo nesestavil. Když build spadne, nasazení neproběhne a na Pages zůstane
 # poslední funkční verze webu (docs/adr/0001).
 #
-# Akce jsou připnuté na commit vydané verze; aktualizace je vědomý krok
-# stejně jako u závislostí v package.json (docs/adr/0002).
+# Akce jsou připnuté na commit vydané verze a runner na verzi systému;
+# aktualizace je vědomý krok stejně jako u závislostí v package.json
+# (docs/adr/0002).
 
 name: Publikace webu
 
@@ -30,7 +31,7 @@ jobs:
     name: Specifikace a build
     # Ruční spuštění z jiné větve by specifikaci commitlo do ní, ne do main.
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write # commit změněné specifikace do main
@@ -83,7 +84,7 @@ jobs:
   deploy:
     name: Nasazení na Pages
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       pages: write # nasazení na Pages
