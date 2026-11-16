@@ -85,8 +85,18 @@ function withoutTrailingPeriods(spec) {
 }
 
 /**
+ * Řádek operace bez textu ve výpisu pokrytí: s názvem souboru, do kterého popis
+ * patří, aby ho správce textů jen zkopíroval. Když stejný název souboru vychází
+ * i jiné operaci, popis přiřadit nejde a řádek řekne proč.
+ * @param {import('./content.mjs').Coverage[number]['operations'][number]} operation
+ */
+const operationLine = ({ label, file, sharedWith }) =>
+  sharedWith.length > 0 ? `${label} (popis nejde přiřadit, stejný název souboru ${file} má i ${sharedWith.join(', ')})` : `${label} → ${file}`;
+
+/**
  * Vypíše, kolik operací a skupin má text, a jako varování ty, které ho nemají:
- * skupiny na jednom řádku, operace po skupinách v pořadí menu.
+ * skupiny na jednom řádku, operace po skupinách v pořadí menu a u každé název
+ * souboru pro její popis.
  * @param {import('./content.mjs').Coverage} coverage
  */
 function reportCoverage(label, coverage, log) {
@@ -98,7 +108,7 @@ function reportCoverage(label, coverage, log) {
   if (groupsWithoutText.length > 0) log.warn(`${label}: skupiny bez textu: ${groupsWithoutText.map(({ name }) => name).join(', ')}`);
   const lines = coverage.flatMap(({ name, operations: list }) => {
     const withoutText = list.filter(({ described }) => !described);
-    return withoutText.length > 0 ? [`  ${name ?? '(bez skupiny)'}`, ...withoutText.map(({ label: operation }) => `    ${operation}`)] : [];
+    return withoutText.length > 0 ? [`  ${name ?? '(bez skupiny)'}`, ...withoutText.map((operation) => `    ${operationLine(operation)}`)] : [];
   });
   if (lines.length > 0) log.warn([`${label}: operace bez textu:`, ...lines].join('\n'));
 }

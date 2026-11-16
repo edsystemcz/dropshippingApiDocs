@@ -45,8 +45,8 @@ Web má dvě prostředí, PROD a TEST, a návštěvník mezi nimi přepíná v z
 
 Potřebujete účet na GitHubu s právem zápisu do repa `edsystemcz/dropshippingApiDocs`. Bez něj GitHub místo uložení nabídne „Propose changes“ a změna čeká na schválení někým s právem zápisu.
 
-1. **Zjistěte metodu a cestu operace.** Na webu je u každé operace v záhlaví ukázky kódu (na počítači vpravo od popisu), například `GET /codelists/paymentTypes`. Seznam všech operací, které popis ještě nemají, je ve [výpisu pokrytí](#výpis-pokrytí-a-varování).
-2. **Odvoďte název souboru** podle oddílu [Jak pojmenovat soubor](#jak-pojmenovat-soubor). Pro `GET /codelists/paymentTypes` je to `get__codelists_paymentTypes.md`.
+1. **Zjistěte metodu a cestu operace.** Na webu je u každé operace v záhlaví ukázky kódu (na počítači vpravo od popisu), například `GET /codelists/paymentTypes`. Seznam všech operací, které popis ještě nemají, je ve [výpisu pokrytí](#výpis-pokrytí-a-varování), i s názvem souboru pro popis.
+2. **Zjistěte název souboru.** Zkopírujte ho z výpisu pokrytí (za šipkou u operace), nebo ho odvoďte podle oddílu [Jak pojmenovat soubor](#jak-pojmenovat-soubor). Pro `GET /codelists/paymentTypes` je to `get__codelists_paymentTypes.md`.
 3. **Zkopírujte osnovu ze šablony.** Otevřete na GitHubu soubor [`content/cs/_sablona-operace.md`](content/cs/_sablona-operace.md), přepněte zobrazení z „Preview“ na „Code“ a zkopírujte všechno pod vodorovnou čarou `---` (od věty „Jedna až dvě věty pro neprogramátora…“ až do konce).
 4. **Vytvořte soubor.** Na GitHubu otevřete složku [`content/cs/operations/`](content/cs/operations/). Nad seznamem souborů klikněte na **Add file** → **Create new file**. Do pole s názvem napište název souboru ze 2. kroku (bez lomítek, jinak GitHub založí novou složku) a do editoru vložte zkopírovanou osnovu.
 5. **Napište text.** V každém oddílu nahraďte nápovědu vlastním textem podle [šablony](#šablona-popisu-operace). Záložka **Preview** nad editorem ukáže, jak bude text vypadat.
@@ -161,15 +161,15 @@ Do té doby zůstane na anglickém webu česky. Prázdný překlad nebo porušen
 
 ## Výpis pokrytí a varování
 
-Build na konci vypíše pro každý jazyk a prostředí, kolik operací a skupin má text, a seznam operací bez popisu seřazený podle skupin. To je seznam zbývající práce:
+Build na konci vypíše pro každý jazyk a prostředí, kolik operací a skupin má text, a seznam operací bez popisu seřazený podle skupin, u každé s názvem souboru, do kterého popis patří. To je seznam zbývající práce:
 
 ```text
-cs PROD: popsáno 5 z 28 operací a 5 z 5 skupin
+cs PROD: popsáno 6 z 28 operací a 5 z 5 skupin
 cs PROD: operace bez textu:
   Info
-    GET /Info
+    GET /Info → get__Info.md
   Codelist
-    GET /codelists/paymentTypes
+    GET /codelists/productUnits → get__codelists_productUnits.md
     …
 ```
 

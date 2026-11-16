@@ -1254,7 +1254,7 @@ test('odkaz na soubor operace nebo skupiny, která text ještě nemá, vede na o
     '# Úvod\n\n[založení jobu](#prod/tag/products/POST/products/catalog), [kategorie](#prod/tag/codelist/GET/codelists/ProductCategory) a [katalog](#prod/tag/products).',
   );
   assert.match((await readJson(inputs.outDir, 'openapi.test.json')).info.description, /\[katalog\]\(#test\/tag\/products\)/);
-  assert.match(output, /^WARN cs PROD: operace bez textu:\n(.*\n)*? {4}POST \/products\/catalog$/m);
+  assert.match(output, /^WARN cs PROD: operace bez textu:\n(.*\n)*? {4}POST \/products\/catalog → post__products_catalog\.md$/m);
 });
 
 test('odkaz na operaci bez textu, která je jen v jednom prostředí, zůstane jinde jako prostý text', async () => {
@@ -1360,7 +1360,7 @@ test('nadpis úvodní kapitoly zapsaný podtržením shodí build, protože by r
 
 // Pokrytí: výpis na konci buildu je seznam zbývající práce.
 
-test('build na konci vypíše pokrytí pro každý jazyk a prostředí a operace bez textu podle skupin', async () => {
+test('build na konci vypíše pokrytí pro každý jazyk a prostředí a operace bez textu podle skupin s názvem souboru pro popis', async () => {
   const inputs = await project({
     specs: {
       prod: catalogSpec(),
@@ -1385,41 +1385,41 @@ test('build na konci vypíše pokrytí pro každý jazyk a prostředí a operace
       'WARN cs PROD: skupiny bez textu: Info, Codelist',
       'WARN cs PROD: operace bez textu:',
       '  Info',
-      '    GET /Info',
+      '    GET /Info → get__Info.md',
       '  Codelist',
-      '    GET /codelists/ProductCategory',
+      '    GET /codelists/ProductCategory → get__codelists_ProductCategory.md',
       '  Products',
-      '    GET /products/catalog',
-      '    GET /files/{fileName}',
+      '    GET /products/catalog → get__products_catalog.md',
+      '    GET /files/{fileName} → get__files_{fileName}.md',
       'INFO cs TEST: popsáno 2 z 6 operací a 1 z 3 skupin',
       'WARN cs TEST: skupiny bez textu: Info, Codelist',
       'WARN cs TEST: operace bez textu:',
       '  Info',
-      '    GET /Info',
+      '    GET /Info → get__Info.md',
       '  Codelist',
-      '    GET /codelists/ProductCategory',
+      '    GET /codelists/ProductCategory → get__codelists_ProductCategory.md',
       '  Products',
-      '    GET /products/catalog',
-      '    GET /files/{fileName}',
+      '    GET /products/catalog → get__products_catalog.md',
+      '    GET /files/{fileName} → get__files_{fileName}.md',
       'INFO en PROD: popsáno 1 z 5 operací a 0 z 3 skupin',
       'WARN en PROD: skupiny bez textu: Info, Codelist, Products',
       'WARN en PROD: operace bez textu:',
       '  Codelist',
-      '    GET /codelists/ProductCategory',
+      '    GET /codelists/ProductCategory → get__codelists_ProductCategory.md',
       '  Products',
-      '    GET /products/catalog',
-      '    POST /products/catalog',
-      '    GET /files/{fileName}',
+      '    GET /products/catalog → get__products_catalog.md',
+      '    POST /products/catalog → post__products_catalog.md',
+      '    GET /files/{fileName} → get__files_{fileName}.md',
       'INFO en TEST: popsáno 1 z 6 operací a 0 z 3 skupin',
       'WARN en TEST: skupiny bez textu: Info, Codelist, Products',
       'WARN en TEST: operace bez textu:',
       '  Codelist',
-      '    GET /codelists/ProductCategory',
-      '    GET /codelists/ProductIndex',
+      '    GET /codelists/ProductCategory → get__codelists_ProductCategory.md',
+      '    GET /codelists/ProductIndex → get__codelists_ProductIndex.md',
       '  Products',
-      '    GET /products/catalog',
-      '    POST /products/catalog',
-      '    GET /files/{fileName}',
+      '    GET /products/catalog → get__products_catalog.md',
+      '    POST /products/catalog → post__products_catalog.md',
+      '    GET /files/{fileName} → get__files_{fileName}.md',
     ].join('\n'),
   );
 });
@@ -1434,7 +1434,7 @@ test('jazyková verze, kde mají text všechny operace i skupiny, je ve výpisu 
 
   assert.match(output, /^INFO cs PROD: popsáno 1 z 1 operací a 1 z 1 skupin$/m);
   assert.doesNotMatch(output, /WARN cs/);
-  assert.match(output, /^WARN en TEST: operace bez textu:\n {2}Info\n {4}GET \/Info$/m);
+  assert.match(output, /^WARN en TEST: operace bez textu:\n {2}Info\n {4}GET \/Info → get__Info\.md$/m);
 });
 
 test('operace, jejichž cesty se liší jen lomítkem a podtržítkem, se počítají obě; popis ani odkaz se stejným názvem souboru přiřadit nejde a shodí build', async () => {
@@ -1445,7 +1445,7 @@ test('operace, jejichž cesty se liší jen lomítkem a podtržítkem, se počí
   const { output } = await run(withoutText);
 
   assert.match(output, /^INFO cs PROD: popsáno 0 z 2 operací a 0 z 1 skupin$/m);
-  assert.match(output, /^WARN cs PROD: operace bez textu:\n {2}Info\n {4}GET \/a\/b\n {4}GET \/a_b$/m);
+  assert.match(output, /^WARN cs PROD: operace bez textu:\n {2}Info\n {4}GET \/a\/b \(popis nejde přiřadit, stejný název souboru get__a_b\.md má i GET \/a_b\)\n {4}GET \/a_b \(popis nejde přiřadit, stejný název souboru get__a_b\.md má i GET \/a\/b\)$/m);
 
   const withText = await project({ specs: { prod: spec, test: spec }, content: { 'cs/operations/get__a_b.md': 'Popis.\n' } });
   await assert.rejects(run(withText), /content\/cs\/operations\/get__a_b\.md.*GET \/a\/b.*GET \/a_b/);
@@ -1464,7 +1464,7 @@ test('skupina, která je u operace uvedená až jako druhá, se do pokrytí poč
   assert.match(output, /^INFO cs PROD: popsáno 0 z 2 operací a 1 z 2 skupin$/m);
   assert.match(output, /^WARN cs PROD: skupiny bez textu: Info$/m);
   assert.match(output, /^WARN en PROD: skupiny bez textu: Info, Monitoring$/m);
-  assert.match(output, /^WARN cs PROD: operace bez textu:\n {2}Info\n {4}GET \/Info\n {4}GET \/Status$/m);
+  assert.match(output, /^WARN cs PROD: operace bez textu:\n {2}Info\n {4}GET \/Info → get__Info\.md\n {4}GET \/Status → get__Status\.md$/m);
 });
 
 test('prázdný soubor s textem shodí build, aby se nepočítal jako popis', async () => {

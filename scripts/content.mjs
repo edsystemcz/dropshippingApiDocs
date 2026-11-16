@@ -65,8 +65,10 @@ function caseHint(expectedNames, name) {
 /**
  * Pokrytí specifikace texty: skupiny v pořadí menu a jejich operace; `described`
  * říká, jestli mají text. Operace je u své první skupiny, operace bez skupiny
- * ve skupině s názvem `null`.
- * @typedef {{name: string | null, described: boolean, operations: {label: string, described: boolean}[]}[]} Coverage
+ * ve skupině s názvem `null`. `file` je název souboru, do kterého popis operace
+ * patří (`get__codelists_ProductCategory.md`); `sharedWith` jsou ostatní operace
+ * se stejným názvem souboru, kterým popis přiřadit nejde.
+ * @typedef {{name: string | null, described: boolean, operations: {label: string, file: string, sharedWith: string[], described: boolean}[]}[]} Coverage
  */
 
 /** Cesta souboru s textem pro hlášení, například `content/cs/intro/10-uvod.md`. */
@@ -245,6 +247,8 @@ function tagEntry(spec, name) {
  */
 function coverageOf(spec, described) {
   const all = [...operations(spec)];
+  const label = ({ method, path }) => `${method.toUpperCase()} ${path}`;
+  const labelsByName = Map.groupBy(all.map((entry) => ({ name: operationTextName(entry.method, entry.path), label: label(entry) })), ({ name }) => name);
   const byFirstGroup = Map.groupBy(all, ({ operation }) => operation.tags?.[0] ?? null);
   const groups = new Set(all.flatMap(({ operation }) => operation.tags ?? []));
   // Pořadí jako v menu: nejdřív skupiny, které specifikace uvádí, pak ostatní.
@@ -252,10 +256,15 @@ function coverageOf(spec, described) {
   return order.map((group) => ({
     name: group,
     described: described.groups.has(group),
-    operations: (byFirstGroup.get(group) ?? []).map(({ method, path, operation }) => ({
-      label: `${method.toUpperCase()} ${path}`,
-      described: described.operations.has(operation),
-    })),
+    operations: (byFirstGroup.get(group) ?? []).map((entry) => {
+      const name = operationTextName(entry.method, entry.path);
+      return {
+        label: label(entry),
+        file: `${name}.md`,
+        sharedWith: labelsByName.get(name).map((other) => other.label).filter((other) => other !== label(entry)),
+        described: described.operations.has(entry.operation),
+      };
+    }),
   }));
 }
 
