@@ -11,3 +11,7 @@ The five default triage roles (`needs-triage`, `needs-info`, `ready-for-agent`, 
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### GitHub access
+
+When `git push`, `fetch` or `pull` hangs, times out or fails on authentication, stop retrying and walk the user through unlocking their SSH key. See `docs/agents/github-access.md`.
