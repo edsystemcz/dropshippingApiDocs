@@ -724,6 +724,77 @@ async function verifyPage({ debugPort, url, environments, expected, labels }) {
   return problems;
 }
 
+/** Soubor, který Chrome stáhl do `dir`, jako JSON; čeká, až stahování skončí. */
+async function downloadedJson(dir, name) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      return JSON.parse(await readFile(join(dir, name), 'utf8'));
+    } catch {
+      await sleep(100);
+    }
+  }
+  return null;
+}
+
+/**
+ * Odkaz na kolekci pro Postman stáhne kolekci právě zvoleného prostředí:
+ * v záhlaví na počítači i v kopii v menu na mobilu, ve výchozím prostředí
+ * i po přepnutí na druhé prostředí přepínačem v menu. Soubory se stahují do
+ * `downloadDir`. Vrací seznam problémů.
+ */
+async function verifyPostmanLink({ debugPort, url, environments, downloadDir, labels }) {
+  const problems = [];
+  const expect = (condition, problem) => {
+    if (!condition) problems.push(problem);
+  };
+  const defaultEnvironment = environments.find((environment) => environment.default);
+  const otherEnvironment = environments.find((environment) => !environment.default);
+  const page = await openPage(debugPort);
+  const rendered = (title) => `document.querySelectorAll('aside a').length > 0 && document.querySelector('h1')?.textContent.trim() === ${JSON.stringify(title)}`;
+  /** Klepne na odkaz a ověří, že se stáhla kolekce prostředí `environment`. */
+  const expectDownload = async (linkExpression, environment, where) => {
+    const dir = join(downloadDir, `${where.replace(/\W+/g, '-')}-${environment.slug}`);
+    await page.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: dir });
+    expect(await page.evaluate(uncovered(linkExpression)), `${where}: odkaz na kolekci pro Postman není vidět`);
+    expect(await page.tap(linkExpression), `${where}: chybí odkaz na kolekci pro Postman`);
+    const collection = await downloadedJson(dir, `postman.${environment.slug}.json`);
+    expect(collection?.info.name === environment.title, `${where} v prostředí ${environmentLabel(environment.slug)}: nestáhla se kolekce postman.${environment.slug}.json s názvem ${environment.title}`);
+  };
+  const headerLink = `document.querySelector('.site-header [data-postman-link]')`;
+
+  try {
+    await page.send('Page.navigate', { url });
+    await page.waitFor(rendered(defaultEnvironment.title), 'vykreslení reference');
+    await sleep(1000);
+    await expectDownload(headerLink, defaultEnvironment, 'záhlaví');
+    // Druhé prostředí návštěvník zvolí přepínačem v menu; stránka se nenačte znovu.
+    await page.click(`[...document.querySelectorAll('aside button[aria-expanded]')].find((button) => button.textContent.includes(${JSON.stringify(defaultEnvironment.title)}))`);
+    await page.waitFor(`document.querySelector('[role="option"]')`, 'nabídka přepínače prostředí');
+    await page.click(`[...document.querySelectorAll('[role="option"]')].find((option) => option.textContent.includes(${JSON.stringify(otherEnvironment.title)}))`);
+    await page.waitFor(rendered(otherEnvironment.title), `přepnutí na ${environmentLabel(otherEnvironment.slug)}`);
+    await sleep(1000);
+    await expectDownload(headerLink, otherEnvironment, 'záhlaví');
+
+    // Mobil: odkaz je v menu, v kopii přepínačů, a míří na stejnou kolekci.
+    await page.send('Emulation.setDeviceMetricsOverride', MOBILE_SCREEN);
+    await page.send('Page.reload');
+    await page.waitFor(`document.querySelector('h1') && ${buttonStartingWith(labels.openMenu)}?.checkVisibility()`, 'vykreslení reference na mobilu');
+    await sleep(1000);
+    await page.tap(buttonStartingWith(labels.openMenu));
+    const menuLink = `[...document.querySelectorAll('aside')].find((aside) => aside.checkVisibility())?.querySelector('[data-postman-link]')`;
+    await page.waitFor(menuLink, 'odkaz na kolekci v menu na mobilu');
+    await sleep(300);
+    expect((await page.evaluate(`${menuLink}.getBoundingClientRect().height`)) >= 40, 'na mobilu je odkaz na kolekci v menu nižší než 40 px');
+    await expectDownload(menuLink, otherEnvironment, 'menu na mobilu');
+    expect(page.errors.length === 0, `chyby v konzoli: ${page.errors.join(' | ')}`);
+  } catch (error) {
+    problems.push(error.message);
+  } finally {
+    await page.close();
+  }
+  return problems;
+}
+
 /**
  * Přepínač jazyka na stránce `fromUrl` vede na stránku `toUrl`: z operace na
  * stejnou operaci, z kapitoly úvodu na začátek úvodu, a zvolené prostředí
@@ -859,6 +930,12 @@ try {
       const counts = (pick) => Object.entries(expected).map(([slug, addresses]) => `${environmentLabel(slug)} ${pick(addresses).length}`).join(', ');
       report(label, problems, `operací ${counts((addresses) => addresses.operations)}; odkazů v textech ${counts((addresses) => addresses.textLinks)}; žádná cizí adresa; úložiště v pořádku`);
     }
+    const downloadDir = join(workDir, 'downloads', language.label);
+    report(
+      `${language.label} odkaz na kolekci pro Postman`,
+      await verifyPostmanLink({ debugPort: chrome.port, url: pageUrl(PUBLIC_HOST, language), environments: inputs.environments, downloadDir, labels }),
+      'v záhlaví i v menu na mobilu stáhne kolekci zvoleného prostředí',
+    );
   }
   // Přepínač jazyka oběma směry, v prostředí, které není výchozí.
   const environment = inputs.environments.find((candidate) => !candidate.default);

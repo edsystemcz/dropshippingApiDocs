@@ -36,6 +36,9 @@ Web ukazuje technickou referenci API a k ní texty pro lidi. Technická část (
 | Šablona popisu operace | `content/cs/_sablona-operace.md`, `content/en/_sablona-operace.md` |
 | Příklady požadavků a odpovědí, opravy specifikace | `overlay/` (spravuje programátor) |
 | Anglický překlad řetězců ze specifikace | `i18n/en.json` |
+| Požadavky na token v kolekci pro Postman | `postman/auth.json` (spravuje programátor) |
+
+Build z každé jazykové verze a prostředí vytvoří i kolekci pro Postman (`postman.prod.json`, `postman.test.json`), kterou si vývojář zákazníka stáhne odkazem v záhlaví nebo v kapitole o autentizaci. Texty se do ní dostanou samy; odkazy mezi texty v ní vedou na stejné místo na webu.
 
 Po každém uložení změny do větve `main` se web sám sestaví a nasadí. Trvá to zhruba minutu. Stejný postup (workflow „Publikace webu“) běží i jednou denně. Pokaždé nejdřív stáhne ze serveru API aktuální specifikaci; když se změnila, uloží ji do repa a web sestaví už s ní.
 
@@ -186,6 +189,7 @@ Ve stejném výpisu jsou i varování. Nic z nich web nezastaví:
 | Texty bez protějšku v druhém jazyce | doplnit překlad textu, viz [Anglická verze](#anglická-verze) |
 | nepřeložené řetězce ze specifikace | doplnit do `i18n/en.json` |
 | odkaz vede na skupinu nebo operaci, která v prostředí není | jen informace, operace je zatím jen v jednom prostředí |
+| kolekce pro Postman: operace … nemá parametr … | předat programátorovi; v kolekci přestalo fungovat předávání hodnoty mezi požadavky katalogu |
 
 ## Když build spadne
 

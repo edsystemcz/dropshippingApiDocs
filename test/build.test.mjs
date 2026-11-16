@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import Ajv from 'ajv-draft-04';
 import { build } from '../scripts/build.mjs';
 
 const ENVIRONMENTS = [
@@ -40,18 +41,41 @@ const LOGO = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE svg PUBLIC "-//W
 /** Značka loga bez textu pro mobil, jak ji uloží grafický editor. */
 const LOGO_SYMBOL = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg viewBox="0 0 17 10" xmlns="http://www.w3.org/2000/svg" xmlns:affinity="https://www.affinity.studio/"><path d="M0 0h17v10z" style="fill:#e0004d"/></svg>\n';
 
+/** Adresa webu; kolekce pro Postman na ni převádí odkazy, které v Postmanu nikam nevedou. */
+const SITE_URL = 'https://docs.example.cz/api/';
+
+/** Nejmenší ručně psaná složka s požadavky na token; jména jsou v obou jazycích. */
+const POSTMAN_AUTH = {
+  name: { cs: 'Autentizace', en: 'Authentication' },
+  item: [
+    {
+      name: { cs: 'Získání tokenu', en: 'Obtain a token' },
+      request: {
+        method: 'POST',
+        url: '{{tokenUrl}}',
+        auth: { type: 'noauth' },
+        body: { mode: 'urlencoded', urlencoded: [{ key: 'grant_type', value: 'password' }, { key: 'client_id', value: '{{clientId}}' }] },
+      },
+      event: [{ listen: 'test', script: { type: 'text/javascript', exec: ["pm.collectionVariables.set('accessToken', pm.response.json().access_token);"] } }],
+    },
+  ],
+};
+
 /**
  * Založí zdrojové složky s daným obsahem a vrátí vstupy pro build.
  * `theme` je obsah souboru s motivem; bez něj build žádný motiv nedostane.
  */
-async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, logoSymbol = LOGO_SYMBOL, theme, translations = {}, scalarTranslations = {}, scalarFixedTexts = {} }) {
+async function project({ specs, overlays = {}, template = TEMPLATE, assets = {}, content = {}, environments = ENVIRONMENTS, logo = LOGO, logoSymbol = LOGO_SYMBOL, theme, translations = {}, scalarTranslations = {}, scalarFixedTexts = {}, postmanAuth = POSTMAN_AUTH }) {
   const dir = await mkdtemp(join(tmpdir(), 'build-'));
   const specDir = join(dir, 'spec');
   const overlayDir = join(dir, 'overlay');
   const siteDir = join(dir, 'site');
   const contentDir = join(dir, 'content');
   const i18nDir = join(dir, 'i18n');
+  const postmanDir = join(dir, 'postman');
   await mkdir(i18nDir);
+  await mkdir(postmanDir);
+  await writeFile(join(postmanDir, 'auth.json'), typeof postmanAuth === 'string' ? postmanAuth : JSON.stringify(postmanAuth));
   await writeFile(join(i18nDir, 'en.json'), typeof translations === 'string' ? translations : JSON.stringify(translations));
   await writeFile(join(i18nDir, 'scalar.cs.json'), JSON.stringify(scalarTranslations));
   await writeFile(join(i18nDir, 'scalar-fixed.cs.json'), JSON.stringify(scalarFixedTexts));
@@ -85,6 +109,8 @@ async function project({ specs, overlays = {}, template = TEMPLATE, assets = {},
     contentDir,
     siteDir,
     i18nDir,
+    postmanDir,
+    siteUrl: SITE_URL,
     outDir: join(dir, 'dist'),
     assets: assetList,
     logo: join(dir, 'logo.svg'),
@@ -266,9 +292,13 @@ test('do výstupu se dostanou jen vyjmenované soubory, i když ve výstupu a ve
     'en/index.html',
     'en/openapi.prod.json',
     'en/openapi.test.json',
+    'en/postman.prod.json',
+    'en/postman.test.json',
     'index.html',
     'openapi.prod.json',
     'openapi.test.json',
+    'postman.prod.json',
+    'postman.test.json',
   ]);
   assert.equal(await readFile(join(inputs.outDir, 'assets', 'fonts', 'inter.woff2'), 'utf8'), 'písmo');
 });
@@ -1791,4 +1821,283 @@ test('neveřejný údaj ve stránce shodí build a hlášení jmenuje stránku',
   });
 
   await assert.rejects(run(inputs), failureWith([`\n  index.html: adresa ${personal}`], ['en/index.html']));
+});
+
+// Kolekce pro Postman (ZADANI část 17).
+
+/** Validace proti oficiálnímu schématu Postman Collection v2.1, nezávisle na buildu. */
+const validateCollection = new Ajv({ strict: false, allErrors: true }).compile(
+  JSON.parse(await readFile(new URL('../postman/collection.v2.1.0.schema.json', import.meta.url), 'utf8')),
+);
+
+test('build zapíše kolekci pro Postman pro každý jazyk a prostředí a každá projde schématem Postman Collection v2.1', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122') });
+
+  await run(inputs);
+
+  for (const dir of [inputs.outDir, join(inputs.outDir, 'en')]) {
+    for (const [slug, title] of [['prod', 'Dropshipping API - PROD'], ['test', 'Dropshipping API - TEST']]) {
+      const collection = await readJson(dir, `postman.${slug}.json`);
+      assert.ok(validateCollection(collection), JSON.stringify(validateCollection.errors));
+      assert.equal(collection.info.name, title);
+      assert.equal(collection.info.schema, 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json');
+    }
+  }
+});
+
+/** Požadavky kolekce ve všech složkách. */
+const requestsOf = (items) => items.flatMap((item) => (item.item ? requestsOf(item.item) : [item]));
+
+test('kolekce začíná složkou s požadavky na token v jazyce verze a ostatní požadavky dědí Bearer token z proměnné accessToken', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122') });
+
+  await run(inputs);
+
+  for (const [dir, folder, request] of [
+    [inputs.outDir, 'Autentizace', 'Získání tokenu'],
+    [join(inputs.outDir, 'en'), 'Authentication', 'Obtain a token'],
+  ]) {
+    const collection = await readJson(dir, 'postman.test.json');
+    const [first, ...rest] = collection.item;
+    assert.equal(first.name, folder);
+    assert.equal(first.item[0].name, request);
+    assert.deepEqual(first.item[0].request, POSTMAN_AUTH.item[0].request);
+    assert.deepEqual(first.item[0].event, POSTMAN_AUTH.item[0].event);
+    assert.deepEqual(collection.auth, { type: 'bearer', bearer: [{ key: 'token', value: '{{accessToken}}', type: 'string' }] });
+    const operations = requestsOf(rest);
+    assert.ok(operations.length > 0);
+    for (const { request: own } of operations) assert.equal(own.auth, undefined);
+  }
+});
+
+/** Proměnné kolekce jako objekt název → hodnota. */
+const variablesOf = (collection) => Object.fromEntries(collection.variable.map(({ key, value }) => [key, value]));
+
+test('proměnné kolekce mají adresu API a token endpointu prostředí a prázdné přihlašovací údaje a tokeny', async () => {
+  const inputs = await project({ specs: bothAt('1.1.122'), overlays: { 'base.json': { servers: [{ url: '{{baseUrl}}' }] } } });
+
+  await run(inputs);
+
+  for (const dir of [inputs.outDir, join(inputs.outDir, 'en')]) {
+    for (const { slug, baseUrl, tokenUrl } of ENVIRONMENTS) {
+      assert.deepEqual(variablesOf(await readJson(dir, `postman.${slug}.json`)), {
+        baseUrl,
+        tokenUrl,
+        clientId: '',
+        clientSecret: '',
+        username: '',
+        password: '',
+        accessToken: '',
+        refreshToken: '',
+        transactionId: '',
+        fileName: '',
+      });
+    }
+  }
+});
+
+/** Operace katalogu: založení jobu, zjištění jeho stavu a stažení katalogového souboru. */
+const CATALOG_PATHS = {
+  '/products/catalog': {
+    post: operation('Products', { summary: 'Založení jobu', responses: { 202: { description: 'Job byl založen.' } } }),
+    get: operation('Products', {
+      summary: 'Stav jobu',
+      parameters: [{ name: 'transactionId', in: 'query', required: true, schema: { type: 'string' }, example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }],
+    }),
+  },
+  '/files/{fileName}': {
+    get: operation('Products', {
+      summary: 'Stažení souboru',
+      parameters: [{ name: 'fileName', in: 'path', required: true, schema: { type: 'string' }, example: 'pricelist.ZIP' }],
+    }),
+  },
+};
+
+/** Požadavek kolekce podle názvu. */
+const requestNamed = (collection, name) => requestsOf(collection.item).find((item) => item.name === name);
+
+/**
+ * Spustí testovací skript požadavku tak, jak ho po odpovědi spustí Postman,
+ * a vrátí proměnné kolekce, které skript nastavil.
+ */
+function afterResponse(item, code, body) {
+  const saved = {};
+  const pm = { response: { code, json: () => body }, collectionVariables: { set: (key, value) => (saved[key] = value) } };
+  for (const { listen, script } of item.event ?? []) if (listen === 'test') new Function('pm', script.exec.join('\n'))(pm);
+  return saved;
+}
+
+test('založení jobu uloží transactionId, zjištění stavu ho použije a uloží fileName pro stažení katalogového souboru', async () => {
+  const paths = { '/Info': { get: operation('Info') }, ...CATALOG_PATHS };
+  const inputs = await project({ specs: { prod: sourceSpec('build: 1.1.122', paths), test: sourceSpec('build: 1.1.122', paths) } });
+
+  await run(inputs);
+
+  const collection = await readJson(inputs.outDir, 'postman.prod.json');
+  const create = requestNamed(collection, 'Založení jobu');
+  const status = requestNamed(collection, 'Stav jobu');
+  const download = requestNamed(collection, 'Stažení souboru');
+  assert.deepEqual(afterResponse(create, 202, { transactionId: 'job-1' }), { transactionId: 'job-1' });
+  assert.deepEqual(afterResponse(create, 401, {}), {});
+  assert.deepEqual(
+    status.request.url.query.map(({ key, value, disabled }) => ({ key, value, disabled })),
+    [{ key: 'transactionId', value: '{{transactionId}}', disabled: false }],
+  );
+  assert.deepEqual(afterResponse(status, 200, [{ state: 'InProcess', transactionId: 'job-1' }]), {});
+  assert.deepEqual(afterResponse(status, 200, [{ state: 'Generated', transactionId: 'job-1', fileName: 'katalog.ZIP' }]), { fileName: 'katalog.ZIP' });
+  assert.deepEqual(download.request.url.variable.map(({ key, value }) => ({ key, value })), [{ key: 'fileName', value: '{{fileName}}' }]);
+});
+
+test('návaznost se v prostředí bez operací katalogu přeskočí; u operace bez parametru, který návaznost používá, build varuje', async () => {
+  const catalogInTest = await project({ specs: { prod: sourceSpec('build: 1.1.122'), test: sourceSpec('build: 1.1.122', { '/Info': { get: operation('Info') }, ...CATALOG_PATHS }) } });
+
+  await run(catalogInTest);
+
+  assert.equal(requestNamed(await readJson(catalogInTest.outDir, 'postman.prod.json'), 'Stav jobu'), undefined);
+  assert.ok(requestNamed(await readJson(catalogInTest.outDir, 'postman.test.json'), 'Stav jobu'));
+
+  const renamed = structuredClone(CATALOG_PATHS);
+  renamed['/products/catalog'].get.parameters[0].name = 'jobId';
+  const withoutParameter = await project({ specs: { prod: sourceSpec('build: 1.1.122', renamed), test: sourceSpec('build: 1.1.122', renamed) } });
+
+  const { output } = await run(withoutParameter);
+
+  assert.match(output, /WARN cs PROD: .*GET \/products\/catalog nemá parametr transactionId/);
+  assert.match(output, /WARN en TEST: .*GET \/products\/catalog nemá parametr transactionId/);
+  const status = requestNamed(await readJson(withoutParameter.outDir, 'postman.prod.json'), 'Stav jobu');
+  assert.deepEqual(afterResponse(status, 200, [{ state: 'Generated', fileName: 'katalog.ZIP' }]), { fileName: 'katalog.ZIP' });
+});
+
+/** Text v kolekci, jak ho Postman zobrazí (popis je objekt s obsahem, nebo řetězec). */
+const descriptionOf = (item) => (typeof item.description === 'string' ? item.description : item.description?.content);
+
+test('odkazy v textech kolekce vedou na stejné místo na webu v jazyce verze; odkazy na jiné weby a v ukázkách kódu zůstanou', async () => {
+  const paths = { '/Info': { get: operation('Info', { summary: 'Stav služby' }) } };
+  const inputs = await project({
+    specs: { prod: sourceSpec('build: 1.1.122', paths), test: sourceSpec('build: 1.1.122', paths) },
+    content: {
+      'cs/intro/10-uvod.md':
+        '# Úvod\n\nViz [stav](../operations/get__Info.md), [kolekce](postman.{{envSlug}}.json) a [Postman](https://www.postman.com/).\n\n```md\n[kód](#prod/description/uvod)\n```\n',
+      'en/intro/10-uvod.md': '# Intro\n\nSee [status](../operations/get__Info.md#example) and [collection](postman.{{envSlug}}.json).\n',
+      'cs/operations/get__Info.md': 'Viz [úvod](../intro/10-uvod.md).\n',
+      'en/operations/get__Info.md': '## Example\n\nSee the [intro](../intro/10-uvod.md).\n',
+    },
+  });
+
+  await run(inputs);
+
+  const cs = await readJson(inputs.outDir, 'postman.test.json');
+  assert.equal(
+    descriptionOf(cs.info),
+    '# Úvod\n\nViz [stav](https://docs.example.cz/api/#test/tag/info/GET/Info), [kolekce](https://docs.example.cz/api/postman.test.json) a [Postman](https://www.postman.com/).\n\n```md\n[kód](#prod/description/uvod)\n```',
+  );
+  assert.equal(descriptionOf(requestNamed(cs, 'Stav služby').request), 'Viz [úvod](https://docs.example.cz/api/#test/description/%C3%BAvod).');
+  const en = await readJson(inputs.outDir, 'en', 'postman.prod.json');
+  assert.equal(
+    descriptionOf(en.info),
+    '# Intro\n\nSee [status](https://docs.example.cz/api/en/#prod/tag/info/GET/Info) and [collection](https://docs.example.cz/api/en/postman.prod.json).',
+  );
+  assert.equal(descriptionOf(requestNamed(en, 'Stav služby').request), '## Example\n\nSee the [intro](https://docs.example.cz/api/en/#prod/description/intro).');
+  // Specifikace pro web má dál adresy ve Scalaru.
+  assert.match((await readJson(inputs.outDir, 'openapi.test.json')).info.description, /\[stav\]\(#test\/tag\/info\/GET\/Info\)/);
+});
+
+test('upozornění prostředí je v kolekci citace s tučným označením v jazyce verze, ne značka [!WARNING]', async () => {
+  const environments = [ENVIRONMENTS[0], { ...ENVIRONMENTS[1], notice: { cs: 'Testovací prostředí.', en: 'Test environment.' } }];
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    environments,
+    content: { 'cs/intro/10-uvod.md': '# Úvod\n\nText.\n', 'en/intro/10-uvod.md': '# Intro\n\nText.\n' },
+  });
+
+  await run(inputs);
+
+  assert.equal(descriptionOf((await readJson(inputs.outDir, 'postman.test.json')).info), '# Úvod\n\n> **Upozornění:** Testovací prostředí.\n\nText.');
+  assert.equal(descriptionOf((await readJson(inputs.outDir, 'en', 'postman.test.json')).info), '# Intro\n\n> **Warning:** Test environment.\n\nText.');
+  assert.match((await readJson(inputs.outDir, 'openapi.test.json')).info.description, /> \[!WARNING\]\n> Testovací prostředí\./);
+});
+
+test('složky kolekce mají zobrazované názvy skupin v jazyce verze', async () => {
+  const paths = { '/Info': { get: operation('Info') }, '/codelists/countries': { get: operation('Codelist') } };
+  const inputs = await project({
+    specs: { prod: sourceSpec('build: 1.1.122', paths), test: sourceSpec('build: 1.1.122', paths) },
+    overlays: { 'base.json': { tags: [{ name: 'Info', 'x-displayName': 'Stav služby' }, { name: 'Codelist', 'x-displayName': 'Číselníky' }] } },
+    translations: { 'Stav služby': 'Service status', Číselníky: 'Code lists' },
+  });
+
+  await run(inputs);
+
+  assert.deepEqual((await readJson(inputs.outDir, 'postman.prod.json')).item.map(({ name }) => name), ['Autentizace', 'Stav služby', 'Číselníky']);
+  assert.deepEqual((await readJson(inputs.outDir, 'en', 'postman.prod.json')).item.map(({ name }) => name), ['Authentication', 'Service status', 'Code lists']);
+});
+
+test('opakovaný build dá stejné kolekce; každá jazyková verze prostředí má vlastní stálý identifikátor', async () => {
+  const schema = { type: 'object', properties: { status: { type: 'integer' }, time: { type: 'string', format: 'date-time' }, node: { type: 'string' } }, additionalProperties: {} };
+  const paths = { '/Info': { get: operation('Info', { responses: { 200: { description: 'Stav', content: { 'application/json': { schema } } } } }) } };
+  const inputs = await project({ specs: { prod: sourceSpec('build: 1.1.122', paths), test: sourceSpec('build: 1.1.122', paths) } });
+  const files = ['postman.prod.json', 'postman.test.json', 'en/postman.prod.json', 'en/postman.test.json'];
+
+  await run(inputs);
+  const first = await Promise.all(files.map((file) => readFile(join(inputs.outDir, file), 'utf8')));
+  await run(inputs);
+  const second = await Promise.all(files.map((file) => readFile(join(inputs.outDir, file), 'utf8')));
+
+  assert.deepEqual(second, first);
+  const ids = first.map((text) => JSON.parse(text).info._postman_id);
+  assert.equal(new Set(ids).size, files.length);
+  for (const id of ids) assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+});
+
+test('požadavky v kolekci chtějí odpověď v JSON, i když specifikace uvádí jako první text/plain', async () => {
+  const schema = { type: 'array', items: { type: 'string' } };
+  const content = { 'text/plain': { schema }, 'application/json': { schema }, 'text/json': { schema } };
+  const paths = {
+    '/Info': { get: operation('Info', { summary: 'Stav služby', responses: { 200: { description: 'Stav', content } } }) },
+    '/files/{fileName}': {
+      get: operation('Products', {
+        summary: 'Stažení souboru',
+        parameters: [{ name: 'fileName', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Soubor', content: { 'application/zip': { schema: { type: 'string', format: 'binary' } } } } },
+      }),
+    },
+  };
+  const inputs = await project({ specs: { prod: sourceSpec('build: 1.1.122', paths), test: sourceSpec('build: 1.1.122', paths) } });
+
+  await run(inputs);
+
+  const collection = await readJson(inputs.outDir, 'postman.prod.json');
+  const accept = (name) => requestNamed(collection, name).request.header.find(({ key }) => key === 'Accept')?.value;
+  assert.equal(accept('Stav služby'), 'application/json');
+  assert.equal(accept('Stažení souboru'), 'application/zip');
+  // Specifikace pro web zůstane, jak je.
+  assert.deepEqual(Object.keys((await readJson(inputs.outDir, 'openapi.prod.json')).paths['/Info'].get.responses[200].content), ['text/plain', 'application/json', 'text/json']);
+});
+
+test('text bez znění pro některý jazyk nebo neplatný JSON ve složce s požadavky na token shodí build a nic nezapíše', async () => {
+  const withoutEnglish = structuredClone(POSTMAN_AUTH);
+  withoutEnglish.item[0].name = { cs: 'Získání tokenu' };
+  const missing = await project({ specs: bothAt('1.1.122'), postmanAuth: withoutEnglish });
+
+  await assert.rejects(run(missing), failureWith(['postman/auth.json', 'item › 0 › name', 'jazyk en']));
+  await assert.rejects(readFile(join(missing.outDir, 'index.html')), { code: 'ENOENT' });
+
+  const invalid = await project({ specs: bothAt('1.1.122'), postmanAuth: '{ "name": ' });
+
+  await assert.rejects(run(invalid), failureWith(['postman/auth.json', 'JSON']));
+});
+
+test('vyplněný přihlašovací údaj nebo neveřejná adresa ve složce s požadavky na token shodí build; proměnná Postmanu ne', async () => {
+  const filled = structuredClone(POSTMAN_AUTH);
+  filled.item[0].request.body.urlencoded.push({ key: 'username', value: 'api-ucet' }, { key: 'password', value: '{{password}}' });
+  filled.item[0].request.description = { cs: `Napište na jmeno@${COMPANY_DOMAIN}.`, en: 'Write to us.' };
+  const inputs = await project({ specs: bothAt('1.1.122'), postmanAuth: filled });
+
+  await assert.rejects(
+    run(inputs),
+    failureWith(
+      ['postman.prod.json', 'username', 'api-ucet', `jmeno@${COMPANY_DOMAIN}`],
+      ['password', 'en/postman.prod.json: adresa'],
+    ),
+  );
+  await assert.rejects(readFile(join(inputs.outDir, 'index.html')), { code: 'ENOENT' });
 });

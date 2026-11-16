@@ -55,3 +55,17 @@ curl -X POST '{{tokenUrl}}' \
 ```
 
 Access token můžete lokálně cachovat a obnovovat pomocí refresh tokenu, nebo si před založením každého jobu vyžádat nový. API tento postup nijak neomezuje.
+
+## Kolekce pro Postman
+
+API si můžete vyzkoušet z [Postmanu](https://www.postman.com/) nebo jiného nástroje, který čte kolekce ve formátu Postman Collection v2.1. Kolekce obsahuje všechny operace zvoleného prostředí a na začátku složku Autentizace s požadavky na získání a obnovu tokenu. Kolekce je pro prostředí, ve kterém si ji na webu stáhnete; pro druhé prostředí si stáhněte jeho kolekci.
+
+[Stáhnout kolekci pro Postman](postman.{{envSlug}}.json)
+
+1. V Postmanu zvolte Import a vyberte stažený soubor.
+2. V proměnných kolekce (záložka Variables) vyplňte clientId, clientSecret, username a password, tedy údaje z oddílu [Získání přístupu](#získání-přístupu). Proměnné baseUrl a tokenUrl už mají adresy zvoleného prostředí.
+3. Ve složce Autentizace spusťte požadavek Získání tokenu. Uloží access token a refresh token do proměnných accessToken a refreshToken a ostatní požadavky kolekce access token použijí samy. Když vyprší, spusťte Obnova tokenu.
+
+Založení jobu uloží `transactionId`, které použije zjištění stavu jobu, a zjištění stavu po vygenerování souboru uloží `fileName` pro stažení katalogového souboru. Synchronizaci katalogu tak projdete požadavek po požadavku bez kopírování hodnot.
+
+Přihlašovací údaje vyplňujte jen u sebe a kolekci s vyplněnými proměnnými nesdílejte.

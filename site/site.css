@@ -200,7 +200,41 @@ body:not(.light-mode, .dark-mode) .site-controls {
   background: color-mix(in srgb, var(--theme-switch-thumb, var(--scalar-background-1)) 55%, transparent);
 }
 
+/* Odkaz na kolekci pro Postman: ikona stažení a název na stejné dráze jako přepínač jazyka. */
+.site-postman {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--site-control-size);
+  padding: 0 10px 0 8px;
+  font-size: 12px;
+  font-weight: var(--scalar-bold);
+  line-height: 1;
+  color: var(--theme-switch-color, var(--scalar-color-1));
+  text-decoration: none;
+  white-space: nowrap;
+  background: var(--theme-switch-track, var(--scalar-background-3));
+  border-radius: var(--scalar-radius);
+}
+
+.site-postman:hover {
+  color: var(--scalar-color-accent);
+}
+
+.site-postman svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .site-theme:focus-visible,
+.site-postman:focus-visible,
 .site-languages a:focus-visible {
   outline: 2px solid var(--scalar-color-accent);
   outline-offset: 2px;
@@ -265,7 +299,8 @@ body:not(.light-mode, .dark-mode) .site-controls {
     margin-left: 12px;
   }
 
-  .darklight-reference .site-languages {
+  .darklight-reference .site-languages,
+  .darklight-reference .site-postman {
     font-size: 14px;
   }
 

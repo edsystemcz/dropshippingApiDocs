@@ -32,7 +32,7 @@ function blocks(markdown) {
 }
 
 /** Upraví prózu funkcí `map`; ohrazené bloky kódu nechá být. */
-const mapProse = (markdown, map) =>
+export const mapProse = (markdown, map) =>
   blocks(markdown)
     .map(({ code, text }) => (code ? text : map(text)))
     .join('\n');

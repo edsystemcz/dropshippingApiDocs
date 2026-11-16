@@ -11,6 +11,7 @@ import { environmentLabel, versionLabel } from './environments.mjs';
 import { nonPublicValues } from './non-public.mjs';
 import { locatedStrings, mapStrings, operations } from './openapi.mjs';
 import { applyOverlays, readOverlays } from './overlay.mjs';
+import { collectionValidator, filledCredentials, postmanCollection, readPostmanAuth } from './postman.mjs';
 import { fillPlaceholders } from './placeholders.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
 import { readDictionary, readScalarTranslations, translateSpecs } from './translations.mjs';
@@ -34,9 +35,11 @@ function specForEnvironment(source, environment, apiBuild, log) {
  *
  * @param {{file: string, location?: string, text: string, sourceSpec?: {where: string, text: string}}[]} outputs
  *   texty výstupu; `sourceSpec` je zdrojová specifikace, ze které soubor vznikl
+ * @param {{file: string, location: string, problem: string}[]} [found] neveřejné údaje,
+ *   které našla jiná kontrola (vyplněné přihlašovací údaje v kolekci pro Postman)
  */
-function assertNoNonPublicValues(outputs) {
-  const lines = new Set();
+function assertNoNonPublicValues(outputs, found = []) {
+  const lines = new Set(found.map(({ file, location, problem }) => `${file}: ${location}: ${problem}`));
   for (const { file, location, text, sourceSpec } of outputs) {
     for (const { value, problem } of nonPublicValues(text)) {
       const origin = sourceSpec?.text.includes(value) ? `; je ve zdrojové specifikaci ${sourceSpec.where}` : '';
@@ -48,7 +51,7 @@ function assertNoNonPublicValues(outputs) {
     [
       'Neveřejné údaje ve výstupu, web se s nimi nesmí nasadit:',
       ...[...lines].map((line) => `  ${line}`),
-      'Údaj ze zdrojové specifikace přepiš doplňkem v overlay/ a požádej o opravu v API; ostatní oprav v content/, overlay/ nebo i18n/.',
+      'Údaj ze zdrojové specifikace přepiš doplňkem v overlay/ a požádej o opravu v API; ostatní oprav v content/, overlay/, i18n/ nebo postman/auth.json.',
     ].join('\n'),
   );
 }
@@ -146,19 +149,47 @@ function reportTranslations(language, where, { untranslated, unused }, environme
 /** Název specifikace prostředí ve výstupu; stránka na ni odkazuje relativně. */
 const specFileName = (slug) => `openapi.${slug}.json`;
 
+/** Název kolekce pro Postman prostředí ve výstupu, vedle jeho specifikace. */
+const collectionFileName = (slug) => `postman.${slug}.json`;
+
 /**
  * Jazykové verze webu: čeština v kořeni výstupu, angličtina ve složce en/.
  * `rootPath` je cesta ze stránky ke kořeni výstupu, kde leží společné soubory.
  * `label` je zkratka v přepínači jazyka, `switchLabel` jeho popisek pro čtečky,
  * `themeLabel` popisek tlačítka barevného režimu (stisknuté = tmavý režim),
+ * `postmanLabel` popisek odkazu na kolekci pro Postman v záhlaví,
+ * `alertLabels` označení upozornění (`> [!WARNING]`) v kolekci pro Postman, která je neumí,
  * `scalarTranslations` překlad rozhraní Scalaru a `scalarFixedTexts` překlad
  * textů, které má Scalar napevno anglicky a stránka je přepisuje skriptem.
  */
 const LANGUAGES = [
   // Češtinu Scalar vestavěnou nemá; rozhraní dostane překlad ze slovníku.
-  { code: 'cs', label: 'CZ', dir: '', rootPath: '', pageTitle: 'Dropshipping API dokumentace | eD system', switchLabel: 'Jazyk', themeLabel: 'Tmavý režim', scalarTranslations: 'scalar.cs.json', scalarFixedTexts: 'scalar-fixed.cs.json' },
+  {
+    code: 'cs',
+    label: 'CZ',
+    dir: '',
+    rootPath: '',
+    pageTitle: 'Dropshipping API dokumentace | eD system',
+    switchLabel: 'Jazyk',
+    themeLabel: 'Tmavý režim',
+    postmanLabel: 'Stáhnout kolekci pro Postman',
+    alertLabels: { NOTE: 'Poznámka', TIP: 'Tip', IMPORTANT: 'Důležité', WARNING: 'Upozornění', CAUTION: 'Pozor' },
+    scalarTranslations: 'scalar.cs.json',
+    scalarFixedTexts: 'scalar-fixed.cs.json',
+  },
   // Specifikace je česky; anglická verze ji překládá podle slovníku.
-  { code: 'en', label: 'EN', dir: 'en', rootPath: '../', pageTitle: 'Dropshipping API documentation | eD system', switchLabel: 'Language', themeLabel: 'Dark mode', dictionary: 'en.json' },
+  {
+    code: 'en',
+    label: 'EN',
+    dir: 'en',
+    rootPath: '../',
+    pageTitle: 'Dropshipping API documentation | eD system',
+    switchLabel: 'Language',
+    themeLabel: 'Dark mode',
+    postmanLabel: 'Download the Postman collection',
+    alertLabels: { NOTE: 'Note', TIP: 'Tip', IMPORTANT: 'Important', WARNING: 'Warning', CAUTION: 'Caution' },
+    dictionary: 'en.json',
+  },
 ];
 
 /**
@@ -225,7 +256,9 @@ const THEME_FILE = 'assets/theme.css';
  * Šablona stránky `index.html` v `siteDir` smí obsahovat tyto zástupné symboly:
  * `{{lang}}` (jazyk verze), `{{pageTitle}}` (titulek stránky), `{{rootPath}}`
  * (cesta ke společným souborům), `{{sources}}` (prostředí pro přepínač Scalaru),
- * `{{logo}}` a `{{logoSymbol}}` (logo a jeho značka bez textu pro mobil jako
+ * `{{collection}}` (kolekce pro Postman výchozího prostředí), `{{collections}}`
+ * (kolekce podle prostředí jako objekt JSON), `{{postmanLabel}}` (popisek
+ * odkazu na kolekci), `{{logo}}` a `{{logoSymbol}}` (logo a jeho značka bez textu pro mobil jako
  * inline SVG), `{{themeStyles}}` (odkaz na motiv, nebo nic), `{{themeLabel}}`
  * (popisek tlačítka barevného režimu), `{{localization}}` (jazyk a překlad
  * rozhraní pro volbu `localization` Scalaru), `{{fixedTexts}}` (překlad textů,
@@ -245,6 +278,10 @@ const THEME_FILE = 'assets/theme.css';
  * @param {string} options.i18nDir složka s překlady: `en.json` (řetězce ze specifikace
  *   pro anglickou verzi), `scalar.cs.json` (rozhraní Scalaru pro českou verzi)
  *   a `scalar-fixed.cs.json` (texty, které má Scalar napevno anglicky)
+ * @param {string} options.postmanDir složka s ručně psanou složkou požadavků na token
+ *   pro kolekci pro Postman (`auth.json`, scripts/postman.mjs)
+ * @param {string} options.siteUrl úplná adresa webu (české verze) s lomítkem na konci; kolekce
+ *   pro Postman na ni převádí odkazy z textů, které v Postmanu nikam nevedou
  * @param {string} options.outDir výstupní složka; build ji před zápisem smaže
  * @param {{from: string, to: string}[]} options.assets společné soubory: odkud a kam ve výstupu
  * @param {string} options.logo soubor s logem (SVG)
@@ -252,12 +289,14 @@ const THEME_FILE = 'assets/theme.css';
  * @param {string} [options.theme] soubor s motivem (CSS)
  * @param {{info: (message: string) => void, warn: (message: string) => void}} [options.log]
  */
-export async function build({ environments, specDir, overlayDir, contentDir, siteDir, i18nDir, outDir, assets, logo: logoPath, logoSymbol: logoSymbolPath, theme: themePath, log = console }) {
+export async function build({ environments, specDir, overlayDir, contentDir, siteDir, i18nDir, postmanDir, siteUrl, outDir, assets, logo: logoPath, logoSymbol: logoSymbolPath, theme: themePath, log = console }) {
   const template = await readFile(join(siteDir, 'index.html'), 'utf8');
   const logo = inlineSvg(await readFile(logoPath, 'utf8'));
   const logoSymbol = inlineSvg(await readFile(logoSymbolPath, 'utf8'));
   const theme = themePath === undefined ? null : await readFile(themePath);
   const sources = scriptJson(scalarSources(environments));
+  const defaultCollection = collectionFileName((environments.find((environment) => environment.default) ?? environments[0]).slug);
+  const collections = scriptJson(Object.fromEntries(environments.map(({ slug }) => [slug, collectionFileName(slug)])));
   const overlays = await readOverlays(overlayDir);
   const titled = new Map();
   const apiBuilds = new Map();
@@ -278,9 +317,13 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
     log.info(`${environmentLabel(slug)}: ${apiBuild ? `build ${apiBuild}, ` : ''}operací: ${[...operations(spec)].length}`);
   }
   const validator = new Validator();
+  const validateCollection = await collectionValidator();
+  const postmanAuth = await readPostmanAuth(postmanDir);
   const files = new Map();
   /** Texty výstupu, které vznikají ze specifikací, textů a překladů; build v nich hledá neveřejné údaje. */
   const generated = [];
+  /** Vyplněné přihlašovací údaje v kolekcích pro Postman. */
+  const credentials = [];
   /** Pokrytí texty podle označení jazykové verze prostředí. */
   const coverages = new Map();
   const textsByLanguage = new Map();
@@ -302,22 +345,50 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
       await assertValidOpenApi(validator, spec, label);
       const file = join(language.dir, specFileName(slug));
       files.set(file, JSON.stringify(spec, null, 2));
+      const environment = environments.find((candidate) => candidate.slug === slug);
+      const collection = await postmanCollection({ spec, environment, auth: postmanAuth, language: language.code,
+        languages: LANGUAGES.map(({ code }) => code),
+        label,
+        pageUrl: new URL(language.dir ? `${language.dir}/` : '', siteUrl).href,
+        alertLabels: language.alertLabels,
+        log,
+      });
+      validateCollection(collection, label);
+      const collectionFile = join(language.dir, collectionFileName(slug));
+      files.set(collectionFile, JSON.stringify(collection, null, 2));
+      for (const { text, location } of locatedStrings(collection)) generated.push({ file: collectionFile, location, text });
+      for (const { location, problem } of filledCredentials(collection)) credentials.push({ file: collectionFile, location, problem });
       for (const { text, location } of locatedStrings(spec)) generated.push({ file, location, text, sourceSpec: sourceSpecs.get(slug) });
       coverages.set(label, inserted.coverage.get(slug));
     }
   }
   if (theme !== null) files.set(THEME_FILE, theme);
   for (const language of LANGUAGES) {
-    const { code, dir, rootPath, pageTitle, themeLabel, scalarTranslations, scalarFixedTexts } = language;
+    const { code, dir, rootPath, pageTitle, themeLabel, postmanLabel, scalarTranslations, scalarFixedTexts } = language;
     const themeStyles = theme === null ? '' : `<link rel="stylesheet" href="${rootPath}${THEME_FILE}">`;
     const localization = scriptJson(scalarTranslations ? { locale: code, translations: await readScalarTranslations(join(i18nDir, scalarTranslations)) } : { locale: code });
     const fixedTexts = scriptJson(scalarFixedTexts ? await readScalarTranslations(join(i18nDir, scalarFixedTexts)) : null);
-    const values = { lang: code, pageTitle, rootPath, sources, logo, logoSymbol, themeStyles, themeLabel, localization, fixedTexts, languageSwitch: languageSwitch(language) };
+    const values = {
+      lang: code,
+      pageTitle,
+      rootPath,
+      sources,
+      collection: defaultCollection,
+      collections,
+      postmanLabel,
+      logo,
+      logoSymbol,
+      themeStyles,
+      themeLabel,
+      localization,
+      fixedTexts,
+      languageSwitch: languageSwitch(language),
+    };
     const page = fillPlaceholders(template, values, 'šablona stránky');
     files.set(join(dir, 'index.html'), page);
     generated.push({ file: join(dir, 'index.html'), text: page });
   }
-  assertNoNonPublicValues(generated);
+  assertNoNonPublicValues(generated, credentials);
   for (const { from, to } of assets) files.set(to, await readFile(from));
 
   // Vše je načtené; teprve teď se sahá na výstup, aby chyba ve vstupech
@@ -365,6 +436,8 @@ const siteAssets = (repoRoot) => {
  */
 export const siteInputs = async (repoRoot) => {
   const theme = join(repoRoot, 'site/theme.css');
+  // Adresa webu; po přechodu na vlastní doménu GitHub Pages starou adresu přesměruje.
+  const { homepage } = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
   return {
     environments: JSON.parse(await readFile(join(repoRoot, 'environments.json'), 'utf8')),
     specDir: join(repoRoot, 'spec'),
@@ -372,6 +445,8 @@ export const siteInputs = async (repoRoot) => {
     contentDir: join(repoRoot, 'content'),
     siteDir: join(repoRoot, 'site'),
     i18nDir: join(repoRoot, 'i18n'),
+    postmanDir: join(repoRoot, 'postman'),
+    siteUrl: homepage,
     assets: siteAssets(repoRoot),
     logo: join(repoRoot, 'site/assets/logo.svg'),
     logoSymbol: join(repoRoot, 'site/assets/logo-symbol.svg'),

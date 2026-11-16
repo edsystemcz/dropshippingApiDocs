@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Validator } from '@seriousme/openapi-schema-validator';
+import Ajv from 'ajv-draft-04';
 import { build, siteInputs } from '../scripts/build.mjs';
 import { composite, contrastRatio, MIN_CONTRAST } from '../scripts/contrast.mjs';
 
@@ -54,9 +55,13 @@ test('výstup obsahuje právě vyjmenované soubory', async () => {
     'en/index.html',
     'en/openapi.prod.json',
     'en/openapi.test.json',
+    'en/postman.prod.json',
+    'en/postman.test.json',
     'index.html',
     'openapi.prod.json',
     'openapi.test.json',
+    'postman.prod.json',
+    'postman.test.json',
   ]);
 });
 
@@ -800,4 +805,118 @@ test('texty, které česká stránka přepisuje, má Scalar zafixované verze op
   });
   assert.deepEqual(missing, []);
   assert.ok(Object.values(fixed).every((czech) => typeof czech === 'string' && czech.trim() !== ''), 'prázdný překlad');
+});
+
+// Kolekce pro Postman (ZADANI část 17, ticket 12).
+
+/** Kolekce každého jazyka a prostředí: [soubor, kolekce, prostředí]. */
+const builtCollections = async () =>
+  Promise.all(
+    ENVIRONMENTS.flatMap((environment) =>
+      ['', 'en/'].map(async (dir) => [`${dir}postman.${environment.slug}.json`, JSON.parse(await read(`${dir}postman.${environment.slug}.json`)), environment]),
+    ),
+  );
+
+/** Požadavky kolekce ve všech složkách. */
+const collectionRequests = (items) => items.flatMap((item) => (item.item ? collectionRequests(item.item) : [item]));
+
+/** Požadavek kolekce podle metody a cesty ze specifikace (`/files/{fileName}`). */
+const collectionRequest = (collection, method, path) =>
+  collectionRequests(collection.item).find(
+    ({ request }) => request.method === method && typeof request.url === 'object' && `/${request.url.path.map((part) => part.replace(/^:(.+)$/, '{$1}')).join('/')}` === path,
+  );
+
+/** Spustí testovací skript požadavku jako Postman po odpovědi a vrátí proměnné, které nastavil. */
+function afterResponse(item, code, body) {
+  const saved = {};
+  const pm = { response: { code, json: () => body }, collectionVariables: { set: (key, value) => (saved[key] = value) } };
+  for (const { listen, script } of item.event ?? []) if (listen === 'test') new Function('pm', script.exec.join('\n'))(pm);
+  return saved;
+}
+
+test('kolekce pro Postman každého jazyka a prostředí projde schématem Postman Collection v2.1', async () => {
+  const validate = new Ajv({ strict: false, allErrors: true }).compile(JSON.parse(await readFile(join(repoRoot, 'postman/collection.v2.1.0.schema.json'), 'utf8')));
+  for (const [file, collection, environment] of await builtCollections()) {
+    assert.ok(validate(collection), `${file}: ${JSON.stringify(validate.errors)}`);
+    assert.equal(collection.info.name, environment.title, file);
+  }
+});
+
+test('kolekce začíná požadavky na získání a obnovu tokenu, které uloží oba tokeny; ostatní požadavky používají accessToken', async () => {
+  for (const [file, collection, environment] of await builtCollections()) {
+    const [auth] = collection.item;
+    assert.equal(auth.name, chapterTitle(file, 'authentication'), file);
+    const [obtain, renew] = auth.item;
+    for (const [request, grantType] of [[obtain, 'password'], [renew, 'refresh_token']]) {
+      assert.equal(request.request.url, '{{tokenUrl}}', `${file}: ${request.name}`);
+      assert.deepEqual(request.request.auth, { type: 'noauth' }, `${file}: ${request.name}`);
+      assert.equal(request.request.body.urlencoded.find(({ key }) => key === 'grant_type').value, grantType, `${file}: ${request.name}`);
+      assert.deepEqual(afterResponse(request, 200, { access_token: 'a', refresh_token: 'r', expires_in: 600 }), { accessToken: 'a', refreshToken: 'r' }, `${file}: ${request.name}`);
+      assert.deepEqual(afterResponse(request, 401, {}), {}, `${file}: ${request.name}`);
+    }
+    assert.deepEqual(collection.auth, { type: 'bearer', bearer: [{ key: 'token', value: '{{accessToken}}', type: 'string' }] }, file);
+    for (const { name, request } of collectionRequests(collection.item.slice(1))) assert.equal(request.auth, undefined, `${file}: ${name}`);
+    const variables = Object.fromEntries(collection.variable.map(({ key, value }) => [key, value]));
+    assert.equal(variables.baseUrl, environment.baseUrl, file);
+    assert.equal(variables.tokenUrl, environment.tokenUrl, file);
+  }
+});
+
+test('kolekce neobsahuje žádnou vyplněnou hodnotu přihlašovacích údajů ani tokenů', async () => {
+  for (const [file, collection] of await builtCollections()) {
+    for (const key of ['clientId', 'clientSecret', 'username', 'password', 'accessToken', 'refreshToken']) {
+      assert.equal(collection.variable.find((variable) => variable.key === key)?.value, '', `${file}: ${key}`);
+    }
+    for (const { name, request } of collectionRequests(collection.item)) {
+      for (const { key, value } of request.body?.urlencoded ?? []) {
+        if (key !== 'grant_type') assert.match(value, /^\{\{\w+\}\}$/, `${file}: ${name}: ${key}`);
+      }
+    }
+  }
+});
+
+test('založení jobu uloží transactionId pro zjištění stavu a zjištění stavu fileName pro stažení katalogového souboru', async () => {
+  for (const [file, collection] of await builtCollections()) {
+    const create = collectionRequest(collection, 'POST', '/products/catalog');
+    const status = collectionRequest(collection, 'GET', '/products/catalog');
+    const download = collectionRequest(collection, 'GET', '/files/{fileName}');
+    assert.deepEqual(afterResponse(create, 202, { transactionId: 'job-1' }), { transactionId: 'job-1' }, file);
+    assert.equal(status.request.url.query.find(({ key }) => key === 'transactionId').value, '{{transactionId}}', file);
+    assert.deepEqual(afterResponse(status, 200, [{ state: 'Generated', transactionId: 'job-1', fileName: 'katalog.ZIP' }]), { fileName: 'katalog.ZIP' }, file);
+    assert.equal(download.request.url.variable.find(({ key }) => key === 'fileName').value, '{{fileName}}', file);
+  }
+});
+
+test('texty v kolekci nemají značku upozornění ani odkaz, který by v Postmanu nikam nevedl; názvy požadavků nemají tečku na konci', async () => {
+  for (const [file, collection] of await builtCollections()) {
+    const texts = stringsOf(collection).join('\n');
+    assert.ok(!texts.includes('[!WARNING]'), file);
+    const relative = [...texts.matchAll(/\]\((?!https:\/\/|mailto:)([^)\s]+)/g)].map(([, destination]) => destination);
+    assert.deepEqual(relative, [], file);
+    for (const { name } of collectionRequests(collection.item)) assert.doesNotMatch(name, /(?<!\.)\.$/, `${file}: ${name}`);
+  }
+  const homepage = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8')).homepage;
+  const [, testCs] = (await builtCollections()).find(([file]) => file === 'postman.test.json');
+  assert.match(testCs.info.description.content, /^# Úvod\n\n> \*\*Upozornění:\*\* Toto je dokumentace testovacího prostředí\./);
+  assert.ok(testCs.info.description.content.includes(`(${homepage}#test/description/`), 'odkazy vedou na web ve zvoleném prostředí');
+});
+
+test('kapitola o autentizaci odkazuje na kolekci prostředí a v obou jazycích má návod k importu a vyplnění proměnných', async () => {
+  const heading = { cs: 'Kolekce pro Postman', en: 'Postman collection' };
+  for (const [file, spec, environment] of await builtSpecs()) {
+    const chapter = introChapter(file, spec, chapterTitle(file, 'authentication')).body;
+    const section = chapter.slice(chapter.indexOf(`## ${heading[languageOf(file)]}\n`));
+    assert.ok(section.startsWith('## '), `${file}: kapitola nemá oddíl ${heading[languageOf(file)]}`);
+    assert.match(section, new RegExp(`\\]\\(postman\\.${environment.slug}\\.json\\)`), file);
+    assert.match(section, /Import/, file);
+    for (const variable of ['clientId', 'clientSecret', 'username', 'password']) assert.ok(section.includes(variable), `${file}: návod nejmenuje proměnnou ${variable}`);
+  }
+});
+
+test('záhlaví odkazuje na kolekci pro Postman výchozího prostředí jako na soubor ke stažení', async () => {
+  const header = async (page) => /<header class="site-header"[^>]*>(.*?)<\/header>/s.exec(await read(page))[1];
+  const controls = (html) => /<div class="site-controls">(.*)<\/div>/s.exec(html)[1];
+  for (const page of ['index.html', 'en/index.html']) {
+    assert.match(controls(await header(page)), /<a class="site-postman" href="postman\.prod\.json" download data-postman-link[^>]*>/, page);
+  }
 });

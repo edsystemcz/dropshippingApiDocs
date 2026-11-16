@@ -55,3 +55,17 @@ curl -X POST '{{tokenUrl}}' \
 ```
 
 You can cache the access token locally and renew it using the refresh token, or you can request a new token before starting each job. The API does not restrict this in any way.
+
+## Postman collection
+
+You can try the API from [Postman](https://www.postman.com/) or any other tool that reads collections in the Postman Collection v2.1 format. The collection contains all operations of the selected environment and starts with an Authentication folder with requests for obtaining and renewing a token. The collection is for the environment in which you download it on the website; for the other environment, download its own collection.
+
+[Download the Postman collection](postman.{{envSlug}}.json)
+
+1. In Postman, choose Import and select the downloaded file.
+2. In the collection variables (the Variables tab), fill in clientId, clientSecret, username and password, i.e. the credentials from the [Getting access](#getting-access) section. The baseUrl and tokenUrl variables already contain the addresses of the selected environment.
+3. In the Authentication folder, run the Obtain a token request. It saves the access token and refresh token to the accessToken and refreshToken variables, and the other requests in the collection use the access token automatically. When it expires, run Renew a token.
+
+Starting a job saves the `transactionId`, which checking the job status uses, and once the file is generated, checking the status saves the `fileName` for downloading the catalog file. This lets you go through catalog synchronization request by request without copying values.
+
+Fill in the credentials only on your own computer and do not share the collection with filled-in variables.
