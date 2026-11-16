@@ -57,8 +57,10 @@ jobs:
         run: npm run fetch-spec
 
       # Před buildem, aby byla v repu vidět specifikace, proti které se má
-      # případná chyba buildu opravit. Když mezitím do main přibyl jiný commit,
-      # push selže a specifikaci uloží až běh spuštěný tím commitem.
+      # případná chyba buildu opravit. Zpráva commitu uvádí předchozí a nový
+      # build a které operace a schémata se změnily. Když mezitím do main
+      # přibyl jiný commit, push selže a specifikaci uloží až běh spuštěný
+      # tím commitem.
       - name: Commit změněných specifikací
         if: steps.fetch.outputs.commit-message != ''
         env:

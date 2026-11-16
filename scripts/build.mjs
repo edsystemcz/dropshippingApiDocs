@@ -14,7 +14,7 @@ import { applyOverlays, readOverlays } from './overlay.mjs';
 import { fillPlaceholders } from './placeholders.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
 import { readDictionary, readScalarTranslations, translateSpecs } from './translations.mjs';
-import { annotation, inWorkflow } from './workflow-annotations.mjs';
+import { annotation, inWorkflow } from './workflow-commands.mjs';
 
 /**
  * Titulek je název prostředí; číslo buildu API se z původního titulku stěhuje

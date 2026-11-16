@@ -68,7 +68,7 @@ test('změna jednoho prostředí přepíše jen jeho soubor a vypíše prostřed
     dir,
   );
 
-  assert.deepEqual(results, [
+  assert.partialDeepStrictEqual(results, [
     { slug: 'prod', status: 'unchanged' },
     { slug: 'test', status: 'changed', build: '1.1.123' },
   ]);
@@ -86,7 +86,8 @@ test('změněná specifikace bez čísla buildu v titulku se uloží s varován�
     dir,
   );
 
-  assert.deepEqual(results[0], { slug: 'prod', status: 'changed', build: null });
+  // První stažení: není s čím porovnat, takže předchozí build ani přehled změn nejsou.
+  assert.deepEqual(results[0], { slug: 'prod', status: 'changed', build: null, previousBuild: null, changes: null });
   assert.match(output, /WARN PROD: .*číslo buildu/);
   assert.equal(await readFile(specPath(dir, 'prod'), 'utf8'), body);
 });
@@ -148,12 +149,46 @@ test('neplatná odpověď při prvním stažení žádný soubor nevytvoří', a
   await assert.rejects(stat(specPath(dir, 'prod')), { code: 'ENOENT' });
 });
 
+/** Specifikace s danými operacemi (`GET` na každé cestě, hodnota je název operace) a schématy. */
+const specWith = ({ build, paths, schemas }) =>
+  JSON.stringify({
+    openapi: '3.0.1',
+    info: { title: `Dropshipping API Gateway service, build: ${build}`, version: 'v1' },
+    paths: Object.fromEntries(Object.entries(paths).map(([path, summary]) => [path, { get: { summary } }])),
+    components: { schemas: Object.fromEntries(Object.entries(schemas).map(([name, description]) => [name, { type: 'object', description }])) },
+  });
+
+test('změna ohlásí předchozí číslo buildu a které operace a schémata přibyly, zmizely nebo se změnily', async () => {
+  const dir = await newDir();
+  const before = specWith({ build: '1.1.122', paths: { '/Info': 'Stav', '/b2c/orders': 'Objednávky' }, schemas: { 'Api.Models.Order': 'Objednávka', 'Api.Models.Info': 'Stav' } });
+  const after = specWith({ build: '1.1.123', paths: { '/Info': 'Stav služby', '/products/prices': 'Ceny' }, schemas: { 'Api.Models.Order': 'Objednávka B2C', 'Api.Models.Price': 'Cena' } });
+  await run({ ...bothAt('1.1.122'), 'https://api-test.example/swagger.json': respond(before) }, dir);
+
+  const { results } = await run({ ...bothAt('1.1.122'), 'https://api-test.example/swagger.json': respond(after) }, dir);
+
+  assert.deepEqual(results[1], {
+    slug: 'test',
+    status: 'changed',
+    build: '1.1.123',
+    previousBuild: '1.1.122',
+    changes: {
+      operations: { added: ['GET /products/prices'], removed: ['GET /b2c/orders'], changed: ['GET /Info'] },
+      schemas: { added: ['Price'], removed: ['Info'], changed: ['Order'] },
+    },
+  });
+});
+
+const NO_CHANGES = { operations: { added: [], removed: [], changed: [] }, schemas: { added: [], removed: [], changed: [] } };
+
+/** Předmět zprávy commitu: její první řádek. */
+const subjectOf = (results) => commitMessage(results).split('\n')[0];
+
 test('zpráva commitu jmenuje změněné prostředí a nové číslo buildu', () => {
   const results = [
     { slug: 'prod', status: 'unchanged' },
-    { slug: 'test', status: 'changed', build: '1.1.123' },
+    { slug: 'test', status: 'changed', build: '1.1.123', previousBuild: '1.1.100', changes: NO_CHANGES },
   ];
-  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace TEST na build 1.1.123');
+  assert.equal(subjectOf(results), 'chore(spec): aktualizace specifikace TEST na build 1.1.123');
 });
 
 test('když se nezměnila žádná specifikace, zpráva commitu není', () => {
@@ -166,33 +201,117 @@ test('když se nezměnila žádná specifikace, zpráva commitu není', () => {
 
 test('zpráva commitu při změně obou prostředí na stejný build jmenuje obě a build jednou', () => {
   const results = [
-    { slug: 'prod', status: 'changed', build: '1.1.123' },
-    { slug: 'test', status: 'changed', build: '1.1.123' },
+    { slug: 'prod', status: 'changed', build: '1.1.123', previousBuild: '1.1.100', changes: NO_CHANGES },
+    { slug: 'test', status: 'changed', build: '1.1.123', previousBuild: '1.1.100', changes: NO_CHANGES },
   ];
-  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace PROD a TEST na build 1.1.123');
+  assert.equal(subjectOf(results), 'chore(spec): aktualizace specifikace PROD a TEST na build 1.1.123');
 });
 
 test('zpráva commitu při změně prostředí na různé buildy uvede build u každého prostředí', () => {
   const results = [
-    { slug: 'prod', status: 'changed', build: '1.1.123' },
-    { slug: 'test', status: 'changed', build: '1.1.124' },
+    { slug: 'prod', status: 'changed', build: '1.1.123', previousBuild: '1.1.100', changes: NO_CHANGES },
+    { slug: 'test', status: 'changed', build: '1.1.124', previousBuild: '1.1.100', changes: NO_CHANGES },
   ];
-  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace PROD na build 1.1.123 a TEST na build 1.1.124');
+  assert.equal(subjectOf(results), 'chore(spec): aktualizace specifikace PROD na build 1.1.123 a TEST na build 1.1.124');
 });
 
 test('zpráva commitu u specifikace bez čísla buildu jmenuje jen prostředí', () => {
   const results = [
-    { slug: 'prod', status: 'changed', build: null },
+    { slug: 'prod', status: 'changed', build: null, previousBuild: '1.1.100', changes: NO_CHANGES },
     { slug: 'test', status: 'unchanged' },
   ];
-  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace PROD');
+  assert.equal(subjectOf(results), 'chore(spec): aktualizace specifikace PROD');
 });
 
 test('zpráva commitu uvede prostředí bez čísla buildu až za prostředími s buildem', () => {
   const results = [
-    { slug: 'prod', status: 'changed', build: null },
-    { slug: 'test', status: 'changed', build: '1.1.124' },
+    { slug: 'prod', status: 'changed', build: null, previousBuild: '1.1.100', changes: NO_CHANGES },
+    { slug: 'test', status: 'changed', build: '1.1.124', previousBuild: '1.1.100', changes: NO_CHANGES },
   ];
   // „PROD a TEST na build 1.1.124“ by se četlo, jako by nový build měla obě prostředí.
-  assert.equal(commitMessage(results), 'chore(spec): aktualizace specifikace TEST na build 1.1.124 a PROD');
+  assert.equal(subjectOf(results), 'chore(spec): aktualizace specifikace TEST na build 1.1.124 a PROD');
+});
+
+test('tělo zprávy commitu uvede u prostředí předchozí a nový build a vyjmenuje přidané, odebrané a změněné operace a schémata', () => {
+  const results = [
+    { slug: 'prod', status: 'unchanged' },
+    {
+      slug: 'test',
+      status: 'changed',
+      build: '1.1.123',
+      previousBuild: '1.1.122',
+      changes: {
+        operations: { added: ['GET /products/prices', 'POST /products/prices'], removed: ['GET /b2c/orders'], changed: ['GET /Info'] },
+        schemas: { added: ['Price'], removed: [], changed: ['Order', 'Info'] },
+      },
+    },
+  ];
+
+  assert.equal(
+    commitMessage(results),
+    [
+      'chore(spec): aktualizace specifikace TEST na build 1.1.123',
+      '',
+      'TEST: build 1.1.122 → 1.1.123',
+      '- přidané operace (2): GET /products/prices, POST /products/prices',
+      '- odebrané operace (1): GET /b2c/orders',
+      '- změněné operace (1): GET /Info',
+      '- přidaná schémata (1): Price',
+      '- změněná schémata (2): Order, Info',
+    ].join('\n'),
+  );
+});
+
+/** Tělo zprávy commitu: vše za předmětem a prázdným řádkem. */
+const bodyOf = (results, options) => commitMessage(results, options).split('\n').slice(2).join('\n');
+
+test('tělo zprávy u prvního uložení specifikace neuvádí předchozí build ani změny', () => {
+  const results = [{ slug: 'prod', status: 'changed', build: '1.1.122', previousBuild: null, changes: null }];
+  assert.equal(bodyOf(results), 'PROD: první uložení, build 1.1.122');
+});
+
+test('tělo zprávy řekne, když se číslo buildu nezměnilo nebo ho nejde vyčíst', () => {
+  const changes = { ...NO_CHANGES, operations: { ...NO_CHANGES.operations, changed: ['GET /Info'] } };
+  assert.equal(
+    bodyOf([{ slug: 'prod', status: 'changed', build: '1.1.122', previousBuild: '1.1.122', changes }]),
+    'PROD: build 1.1.122, číslo buildu se nezměnilo\n- změněné operace (1): GET /Info',
+  );
+  assert.equal(
+    bodyOf([{ slug: 'prod', status: 'changed', build: null, previousBuild: '1.1.122', changes }]),
+    'PROD: build 1.1.122 → neznámý\n- změněné operace (1): GET /Info',
+  );
+});
+
+test('tělo zprávy řekne, když se operace ani schémata nezměnily', () => {
+  const results = [{ slug: 'test', status: 'changed', build: '1.1.123', previousBuild: '1.1.122', changes: NO_CHANGES }];
+  assert.equal(bodyOf(results), 'TEST: build 1.1.122 → 1.1.123\n- operace ani schémata se nezměnily, změna je jinde ve specifikaci');
+});
+
+test('tělo zprávy popíše každé změněné prostředí zvlášť a na konci odkáže na běh workflow', () => {
+  const results = [
+    { slug: 'prod', status: 'changed', build: '1.1.123', previousBuild: '1.1.122', changes: NO_CHANGES },
+    { slug: 'test', status: 'changed', build: '1.1.124', previousBuild: '1.1.123', changes: { ...NO_CHANGES, schemas: { ...NO_CHANGES.schemas, added: ['Price'] } } },
+  ];
+  assert.equal(
+    bodyOf(results, { runUrl: 'https://github.example/org/repo/actions/runs/42' }),
+    [
+      'PROD: build 1.1.122 → 1.1.123',
+      '- operace ani schémata se nezměnily, změna je jinde ve specifikaci',
+      '',
+      'TEST: build 1.1.123 → 1.1.124',
+      '- přidaná schémata (1): Price',
+      '',
+      'Běh workflow: https://github.example/org/repo/actions/runs/42',
+    ].join('\n'),
+  );
+});
+
+test('dlouhý výčet tělo zprávy zkrátí a názvy s řídicími znaky zapíše na jeden řádek', () => {
+  const added = Array.from({ length: 23 }, (_, index) => `GET /codelists/c${index + 1}`);
+  const changes = { ...NO_CHANGES, operations: { added, removed: [], changed: ['GET /a\nb\r\n::error::x'] } };
+  const lines = bodyOf([{ slug: 'test', status: 'changed', build: '1.1.123', previousBuild: '1.1.122', changes }]).split('\n');
+
+  assert.equal(lines.length, 3);
+  assert.equal(lines[1], `- přidané operace (23): ${added.slice(0, 20).join(', ')} a další (3)`);
+  assert.equal(lines[2], '- změněné operace (1): GET /a b ::error::x');
 });

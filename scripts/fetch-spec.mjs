@@ -8,8 +8,9 @@ import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { environmentLabel } from './environments.mjs';
+import { specChanges } from './spec-changes.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
-import { annotation, inWorkflow } from './workflow-annotations.mjs';
+import { annotation, inWorkflow, runUrl, stepOutput } from './workflow-commands.mjs';
 
 const TIMEOUT_MS = 30_000;
 
@@ -34,6 +35,17 @@ function assertOpenApi(spec) {
   if (!isObject(spec.paths)) throw new Error('chybí paths');
 }
 
+/** Uložená kopie jako objekt, nebo `null`, když se nedá přečíst; pak není s čím novou specifikaci porovnat. */
+function parseStored(stored) {
+  try {
+    const spec = JSON.parse(stored.toString('utf8'));
+    assertOpenApi(spec);
+    return spec;
+  } catch {
+    return null;
+  }
+}
+
 /** Stáhne specifikaci; při výpadku nebo neplatné odpovědi vyhodí chybu s důvodem. */
 async function download(url, fetchImpl) {
   const response = await fetchImpl(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
@@ -50,7 +62,9 @@ async function download(url, fetchImpl) {
  * @param {string} options.specDir složka s uloženými kopiemi
  * @param {typeof fetch} [options.fetchImpl]
  * @param {{info: (message: string) => void, warn: (message: string) => void}} [options.log]
- * @returns {Promise<{slug: string, status: 'unchanged' | 'changed' | 'failed', build?: string | null}[]>}
+ * @returns {Promise<{slug: string, status: 'unchanged' | 'changed' | 'failed', build?: string | null, previousBuild?: string | null, changes?: ReturnType<typeof specChanges> | null}[]>}
+ *   u změněné specifikace nové a předchozí číslo buildu a přehled změn; bez
+ *   čitelné uložené kopie je `previousBuild` i `changes` `null`
  */
 export async function fetchSpecs({ environments, specDir, fetchImpl = fetch, log = console }) {
   await mkdir(specDir, { recursive: true });
@@ -82,18 +96,62 @@ export async function fetchSpecs({ environments, specDir, fetchImpl = fetch, log
     } else {
       log.warn(`${label}: nová specifikace, číslo buildu se z titulku nepodařilo vyčíst`);
     }
-    results.push({ slug, status: 'changed', build });
+    const previous = stored && parseStored(stored);
+    results.push({
+      slug,
+      status: 'changed',
+      build,
+      previousBuild: previous ? buildNumber(previous) : null,
+      changes: previous ? specChanges(previous, downloaded.spec) : null,
+    });
   }
   return results;
 }
 
+/** Nejvíc názvů v jednom výčtu těla zprávy commitu; zbytek se jen spočítá. */
+const MAX_LISTED = 20;
+
 /**
- * Zpráva commitu, kterým workflow uloží změněné specifikace (ZADANI.md, část 11):
- * jmenuje prostředí a nové číslo buildu.
+ * Názvy operací a schémat jsou text ze stažené specifikace: zpráva commitu je
+ * zapíše na jeden řádek, i kdyby obsahovaly konec řádku.
+ */
+const onOneLine = (name) => name.replace(/[\p{Cc}\s]+/gu, ' ').trim();
+
+function listNames(names) {
+  const listed = names.slice(0, MAX_LISTED).map(onOneLine).join(', ');
+  return names.length > MAX_LISTED ? `${listed} a další (${names.length - MAX_LISTED})` : listed;
+}
+
+/** Řádky těla zprávy commitu pro jedno změněné prostředí. */
+function describeChange({ slug, build, previousBuild, changes }) {
+  const label = environmentLabel(slug);
+  // Bez čitelné uložené kopie není s čím porovnat.
+  if (!changes) return [`${label}: první uložení${build ? `, build ${build}` : ''}`];
+  const builds = build && build === previousBuild ? `build ${build}, číslo buildu se nezměnilo` : `build ${previousBuild ?? 'neznámý'} → ${build ?? 'neznámý'}`;
+  const kinds = [
+    ['přidané operace', changes.operations.added],
+    ['odebrané operace', changes.operations.removed],
+    ['změněné operace', changes.operations.changed],
+    ['přidaná schémata', changes.schemas.added],
+    ['odebraná schémata', changes.schemas.removed],
+    ['změněná schémata', changes.schemas.changed],
+  ];
+  const lines = kinds.filter(([, names]) => names.length > 0).map(([kind, names]) => `- ${kind} (${names.length}): ${listNames(names)}`);
+  if (lines.length === 0) lines.push('- operace ani schémata se nezměnily, změna je jinde ve specifikaci');
+  return [`${label}: ${builds}`, ...lines];
+}
+
+/**
+ * Zpráva commitu, kterým workflow uloží změněné specifikace (ZADANI část 11).
+ * Předmět jmenuje prostředí a nové číslo buildu, tělo u každého prostředí
+ * uvede předchozí build a co se ve specifikaci změnilo.
  *
  * @param {Awaited<ReturnType<typeof fetchSpecs>>} results
+ * @param {object} [options]
+ * @param {string} [options.runUrl] adresa běhu workflow, který specifikaci stáhl
+ * @returns {string | null} `null`, když se žádná specifikace nezměnila
  */
-export function commitMessage(results) {
+export function commitMessage(results, { runUrl } = {}) {
   const changed = results.filter(({ status }) => status === 'changed');
   if (changed.length === 0) return null;
   // Prostředí se stejným buildem se uvedou společně: „PROD a TEST na build 1.1.123“.
@@ -103,7 +161,10 @@ export function commitMessage(results) {
     const labels = environments.map(({ slug }) => environmentLabel(slug)).join(' a ');
     return build ? `${labels} na build ${build}` : labels;
   });
-  return `chore(spec): aktualizace specifikace ${parts.join(' a ')}`;
+  const subject = `chore(spec): aktualizace specifikace ${parts.join(' a ')}`;
+  const paragraphs = [subject, ...changed.map((result) => describeChange(result).join('\n'))];
+  if (runUrl) paragraphs.push(`Běh workflow: ${runUrl}`);
+  return paragraphs.join('\n\n');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -113,6 +174,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const log = inWorkflow() ? { info: console.log, warn: (message) => console.log(annotation('warning', 'Specifikace', message)) } : console;
   const results = await fetchSpecs({ environments, specDir: join(root, 'spec'), log });
   // Workflow podle výstupu pozná, že má změněné specifikace commitnout, a s jakou zprávou.
-  const message = commitMessage(results);
-  if (message && process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `commit-message=${message}\n`);
+  const message = commitMessage(results, { runUrl: runUrl() });
+  if (message && process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, stepOutput('commit-message', message));
 }
