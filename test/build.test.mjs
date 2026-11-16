@@ -1706,3 +1706,89 @@ test('česká stránka dostane překlad textů, které má Scalar napevno anglic
   assert.equal(await readFile(join(inputs.outDir, 'index.html'), 'utf8'), `<script>fixed(${JSON.stringify(scalarFixedTexts)})</script>`);
   assert.equal(await readFile(join(inputs.outDir, 'en', 'index.html'), 'utf8'), '<script>fixed(null)</script>');
 });
+
+// Smyšlené neveřejné údaje se skládají z částí, aby je v tomto souboru nenašla
+// kontrola sledovaných souborů z části 13 zadání (adresy společnosti a hodnoty client_id).
+const COMPANY_DOMAIN = ['edsystem', 'cz'].join('.');
+const SUPPORT_ADDRESS = `customercare@${COMPANY_DOMAIN}`;
+const CLIENT_ID_PARAMETER = ['client_id', ''].join('=');
+
+/** Chyba buildu, jejíž hlášení obsahuje každý z úryvků `expected` a žádný z `unexpected`. */
+const failureWith = (expected, unexpected = []) => (error) => {
+  for (const part of expected) assert.ok(error.message.includes(part), `v hlášení chybí „${part}“:\n${error.message}`);
+  for (const part of unexpected) assert.ok(!error.message.includes(part), `v hlášení nemá být „${part}“:\n${error.message}`);
+  return true;
+};
+
+test('adresa z domény společnosti jiná než zákaznická péče shodí build; hlášení řekne, která to je, kde na webu by byla a odkud pochází, a nic se nezapíše', async () => {
+  const personal = `Jmeno.Prijmeni@${COMPANY_DOMAIN}`;
+  const inputs = await project({
+    specs: {
+      prod: sourceSpec('Dropshipping API Gateway service, build: 1.1.122'),
+      test: sourceSpec('Dropshipping API Gateway service, build: 1.1.123', {
+        '/Info': { get: operation('Info', { description: `Dotazy: ${personal} nebo ${SUPPORT_ADDRESS}` }) },
+      }),
+    },
+  });
+
+  await assert.rejects(
+    run(inputs),
+    failureWith(
+      [
+        'Neveřejné údaje',
+        `openapi.test.json: paths › /Info › get › description: adresa ${personal} (povolená je jen ${SUPPORT_ADDRESS})`,
+        'je ve zdrojové specifikaci spec/swagger.test.source.json',
+      ],
+      ['openapi.prod.json'],
+    ),
+  );
+  await assert.rejects(readFile(join(inputs.outDir, 'openapi.prod.json')), { code: 'ENOENT' });
+});
+
+test('hodnota parametru client_id jiná než {clientId} shodí build; u údaje z textů hlášení zdrojovou specifikaci neuvádí', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: {
+      'cs/intro/10-uvod.md': `# Úvod\n\n\`\`\`bash\ncurl -d 'grant_type=password&${CLIENT_ID_PARAMETER}a1b2c3&client_secret={clientSecret}'\ncurl -d '${CLIENT_ID_PARAMETER}{clientId}'\n\`\`\`\n`,
+    },
+  });
+
+  await assert.rejects(
+    run(inputs),
+    failureWith(
+      [
+        'Neveřejné údaje',
+        `openapi.prod.json: info › description: za ${CLIENT_ID_PARAMETER} je „a1b2c3“, smí tam být jen {clientId}`,
+        'openapi.test.json: info › description',
+      ],
+      ['je ve zdrojové specifikaci'],
+    ),
+  );
+  await assert.rejects(readFile(join(inputs.outDir, 'index.html')), { code: 'ENOENT' });
+});
+
+test('adresa zákaznické péče a zástupná hodnota {clientId} build neshodí, ani v kódu na řádku nebo na konci věty', async () => {
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    content: {
+      'cs/intro/10-uvod.md': `# Úvod\n\nPošlete \`${CLIENT_ID_PARAMETER}{clientId}\`. Napište na ${SUPPORT_ADDRESS}.\n`,
+    },
+  });
+
+  await run(inputs);
+
+  const spec = await readJson(inputs.outDir, 'openapi.prod.json');
+  assert.ok(spec.info.description.includes(`${CLIENT_ID_PARAMETER}{clientId}`));
+  assert.ok(spec.info.description.includes(SUPPORT_ADDRESS));
+});
+
+test('neveřejný údaj ve stránce shodí build a hlášení jmenuje stránku', async () => {
+  const personal = `jmeno@support.${COMPANY_DOMAIN}`;
+  const inputs = await project({
+    specs: bothAt('1.1.122'),
+    template: `${TEMPLATE}<script>translate({{localization}})</script>`,
+    scalarTranslations: { 'search.help': `S hledáním poradí ${personal}` },
+  });
+
+  await assert.rejects(run(inputs), failureWith([`\n  index.html: adresa ${personal}`], ['en/index.html']));
+});

@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { environmentLabel } from './environments.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
+import { annotation, inWorkflow } from './workflow-annotations.mjs';
 
 const TIMEOUT_MS = 30_000;
 
@@ -105,17 +106,11 @@ export function commitMessage(results) {
   return `chore(spec): aktualizace specifikace ${parts.join(' a ')}`;
 }
 
-/** Text varování musí být na jednom řádku, jinak by jeho další řádky runner četl jako příkazy workflow. */
-const escapeAnnotation = (message) => message.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
-
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
   const environments = JSON.parse(await readFile(join(root, 'environments.json'), 'utf8'));
   // Ve workflow se varování ukáže i v přehledu běhu, ne jen ve výpisu kroku.
-  const log =
-    process.env.GITHUB_ACTIONS === 'true'
-      ? { info: console.log, warn: (message) => console.log(`::warning title=Specifikace::${escapeAnnotation(message)}`) }
-      : console;
+  const log = inWorkflow() ? { info: console.log, warn: (message) => console.log(annotation('warning', 'Specifikace', message)) } : console;
   const results = await fetchSpecs({ environments, specDir: join(root, 'spec'), log });
   // Workflow podle výstupu pozná, že má změněné specifikace commitnout, a s jakou zprávou.
   const message = commitMessage(results);

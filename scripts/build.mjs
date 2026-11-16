@@ -3,16 +3,18 @@
 
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Validator } from '@seriousme/openapi-schema-validator';
 import { insertTexts, missingCounterparts, readTexts } from './content.mjs';
 import { environmentLabel, versionLabel } from './environments.mjs';
-import { mapStrings, operations } from './openapi.mjs';
+import { nonPublicValues } from './non-public.mjs';
+import { locatedStrings, mapStrings, operations } from './openapi.mjs';
 import { applyOverlays, readOverlays } from './overlay.mjs';
 import { fillPlaceholders } from './placeholders.mjs';
 import { buildNumber, sourceSpecPath } from './source-spec.mjs';
 import { readDictionary, readScalarTranslations, translateSpecs } from './translations.mjs';
+import { annotation, inWorkflow } from './workflow-annotations.mjs';
 
 /**
  * Titulek je název prostředí; číslo buildu API se z původního titulku stěhuje
@@ -23,6 +25,32 @@ function specForEnvironment(source, environment, apiBuild, log) {
     log.warn(`${environmentLabel(environment.slug)}: číslo buildu se z titulku nepodařilo vyčíst, verze zůstává ${source.info.version}`);
   }
   return { ...source, info: { ...source.info, title: environment.title, version: apiBuild ?? source.info.version } };
+}
+
+/**
+ * Neveřejný údaj ve výstupu shodí build (ZADANI část 13). Hlášení řekne, který
+ * údaj to je, kde na webu by byl a jestli přišel ze zdrojové specifikace, aby
+ * bylo zřejmé, co opravit.
+ *
+ * @param {{file: string, location?: string, text: string, sourceSpec?: {where: string, text: string}}[]} outputs
+ *   texty výstupu; `sourceSpec` je zdrojová specifikace, ze které soubor vznikl
+ */
+function assertNoNonPublicValues(outputs) {
+  const lines = new Set();
+  for (const { file, location, text, sourceSpec } of outputs) {
+    for (const { value, problem } of nonPublicValues(text)) {
+      const origin = sourceSpec?.text.includes(value) ? `; je ve zdrojové specifikaci ${sourceSpec.where}` : '';
+      lines.add(`${[file, location].filter(Boolean).join(': ')}: ${problem}${origin}`);
+    }
+  }
+  if (lines.size === 0) return;
+  throw new Error(
+    [
+      'Neveřejné údaje ve výstupu, web se s nimi nesmí nasadit:',
+      ...[...lines].map((line) => `  ${line}`),
+      'Údaj ze zdrojové specifikace přepiš doplňkem v overlay/ a požádej o opravu v API; ostatní oprav v content/, overlay/ nebo i18n/.',
+    ].join('\n'),
+  );
 }
 
 /**
@@ -175,6 +203,8 @@ const THEME_FILE = 'assets/theme.css';
  * projít validací OpenAPI. Anglická verze má řetězce ze specifikace a overlay
  * přeložené podle slovníku (scripts/translations.mjs). Chyba v doplňcích,
  * v textech, ve slovníku nebo ve validaci shodí build dřív, než se sáhne na výstup.
+ * Stejně tak neveřejný údaj ve výsledné specifikaci nebo stránce
+ * (scripts/non-public.mjs).
  *
  * Jako varování build vypíše nepřeložené řetězce a texty bez protějšku
  * v druhém jazyce; takový text se v druhém jazyce nezobrazí.
@@ -221,8 +251,13 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
   const overlays = await readOverlays(overlayDir);
   const titled = new Map();
   const apiBuilds = new Map();
+  /** Zdrojové specifikace tak, jak jsou uložené, pro hlášení původu neveřejného údaje. */
+  const sourceSpecs = new Map();
   for (const environment of environments) {
-    const source = JSON.parse(await readFile(sourceSpecPath(specDir, environment.slug), 'utf8'));
+    const sourcePath = sourceSpecPath(specDir, environment.slug);
+    const sourceText = await readFile(sourcePath, 'utf8');
+    sourceSpecs.set(environment.slug, { where: `spec/${basename(sourcePath)}`, text: sourceText });
+    const source = JSON.parse(sourceText);
     apiBuilds.set(environment.slug, buildNumber(source));
     titled.set(environment.slug, specForEnvironment(source, environment, apiBuilds.get(environment.slug), log));
   }
@@ -234,6 +269,8 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
   }
   const validator = new Validator();
   const files = new Map();
+  /** Texty výstupu, které vznikají ze specifikací, textů a překladů; build v nich hledá neveřejné údaje. */
+  const generated = [];
   /** Pokrytí texty podle označení jazykové verze prostředí. */
   const coverages = new Map();
   const textsByLanguage = new Map();
@@ -253,7 +290,9 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
       const label = versionLabel(language.code, slug);
       const spec = withoutTrailingPeriods(withUnixLineEndings(withTexts));
       await assertValidOpenApi(validator, spec, label);
-      files.set(join(language.dir, specFileName(slug)), JSON.stringify(spec, null, 2));
+      const file = join(language.dir, specFileName(slug));
+      files.set(file, JSON.stringify(spec, null, 2));
+      for (const { text, location } of locatedStrings(spec)) generated.push({ file, location, text, sourceSpec: sourceSpecs.get(slug) });
       coverages.set(label, inserted.coverage.get(slug));
     }
   }
@@ -264,8 +303,11 @@ export async function build({ environments, specDir, overlayDir, contentDir, sit
     const localization = scriptJson(scalarTranslations ? { locale: code, translations: await readScalarTranslations(join(i18nDir, scalarTranslations)) } : { locale: code });
     const fixedTexts = scriptJson(scalarFixedTexts ? await readScalarTranslations(join(i18nDir, scalarFixedTexts)) : null);
     const values = { lang: code, pageTitle, rootPath, sources, logo, logoSymbol, themeStyles, themeLabel, localization, fixedTexts, languageSwitch: languageSwitch(language) };
-    files.set(join(dir, 'index.html'), fillPlaceholders(template, values, 'šablona stránky'));
+    const page = fillPlaceholders(template, values, 'šablona stránky');
+    files.set(join(dir, 'index.html'), page);
+    generated.push({ file: join(dir, 'index.html'), text: page });
   }
+  assertNoNonPublicValues(generated);
   for (const { from, to } of assets) files.set(to, await readFile(from));
 
   // Vše je načtené; teprve teď se sahá na výstup, aby chyba ve vstupech
@@ -329,5 +371,11 @@ export const siteInputs = async (repoRoot) => {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-  await build({ ...(await siteInputs(repoRoot)), outDir: join(repoRoot, 'dist') });
+  try {
+    await build({ ...(await siteInputs(repoRoot)), outDir: join(repoRoot, 'dist') });
+  } catch (error) {
+    // Ve workflow má být důvod, proč se build zastavil, vidět hned v přehledu běhu.
+    if (inWorkflow()) console.log(annotation('error', 'Build se zastavil', error?.message ?? String(error)));
+    throw error;
+  }
 }

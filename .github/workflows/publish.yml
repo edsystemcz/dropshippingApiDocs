@@ -69,6 +69,8 @@ jobs:
           git commit --message "$COMMIT_MESSAGE"
           git push
 
+      # Build se zastaví na chybě v textech nebo ve specifikaci a na neveřejném
+      # údaji ve výstupu. Důvod je v přehledu běhu jako chyba „Build se zastavil“.
       - name: Build
         run: npm run build
 

@@ -27,3 +27,14 @@ export const mapStrings = (value, map, key) => {
   }
   return value;
 };
+
+/**
+ * Všechny řetězce hodnoty JSON s místem, kde leží: `paths › /Info › get › summary`.
+ * @returns {Generator<{text: string, location: string}>}
+ */
+export function* locatedStrings(value, location = []) {
+  if (typeof value === 'string') yield { text: value, location: location.join(' › ') };
+  else if (typeof value === 'object' && value !== null) {
+    for (const [key, item] of Object.entries(value)) yield* locatedStrings(item, [...location, key]);
+  }
+}
