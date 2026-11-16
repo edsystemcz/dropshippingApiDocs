@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "Dropshipping API Gateway service, build: 1.1.122",
+    "title": "Dropshipping API Gateway service, build: 1.1.121",
     "version": "v1"
   },
   "paths": {
